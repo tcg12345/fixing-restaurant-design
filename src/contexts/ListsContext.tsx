@@ -1,0 +1,1699 @@
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { supabaseConfigured } from '../lib/supabase';
+import { loadUserData, saveRatings, saveLists, saveWishlistData, saveMetaData, saveUserData, saveRecentViews, saveTrips, saveHomeMeals } from '../lib/supabase-db';
+import { publishCommunityRating, removeCommunityRating, publishCommunityPhotos, removeCommunityPhotos, saveVisitRecord, deleteVisitRecord, getVisitHistory, getUserRatings } from '../lib/supabase-community';
+import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
+import { safeImage } from '../lib/utils';
+
+/* ── Types ── */
+
+export interface PhotoItem {
+  url: string;            // base64 data-url
+  caption: string;        // dish name / description
+  isFavorite: boolean;    // marked as favorite dish
+}
+
+export interface RestaurantRating {
+  restaurantId: string;
+  name: string;
+  image: string;
+  cuisine: string;
+  price: string;
+  address: string;
+  score: number;          // 0–10
+  notes: string;
+  visitDate: string;      // ISO date string
+  wouldReturn: boolean;
+  tags: string[];         // e.g. "Great cocktails", "Romantic", etc.
+  photos: PhotoItem[];    // user-uploaded photos with captions
+  listIds: string[];      // which lists this rating belongs to
+  friendIds: string[];    // user IDs of friends who joined
+  createdAt: number;      // timestamp
+}
+
+export interface RestaurantMeta {
+  id: string;
+  name: string;
+  image: string;
+  cuisine: string;
+  price: string;
+  address: string;
+  /** Geo coordinates — populated lazily when the user views the detail
+   *  page. Optional so older rows / synced data still validate. Used by
+   *  list cards to show distance from the user's anchor location. */
+  lat?: number;
+  lng?: number;
+  /** Google Places v1 address components — populated when the user views
+   *  the detail page. Used by formatLocationLabel() to render
+   *  Beli-style "Neighborhood, Borough" / "Neighborhood, City, ST"
+   *  display labels. Older rows fall back to parsing `address`. */
+  addressComponents?: Array<{ longText: string; shortText: string; types: string[] }>;
+  /** Mapbox-sourced neighborhood name (e.g. "West Village", "Mission",
+   *  "Williamsburg"). Backfilled by the location enricher because
+   *  Google's Places components don't include neighborhood data for
+   *  most cities. */
+  neighborhood?: string;
+}
+
+export interface RecipeIngredient {
+  name: string;
+  amount: string;
+  unit: string;
+}
+
+export interface Recipe {
+  id: string;
+  title: string;
+  description: string;
+  coverPhoto: string;       // base64 data-url
+  prepTime: number;         // minutes
+  cookTime: number;         // minutes
+  servings: number;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  cuisine: string;
+  ingredients: RecipeIngredient[];
+  steps: string[];
+  photos: PhotoItem[];
+  tags: string[];
+  score: number;            // 0–10 rating
+  isPrivate: boolean;
+  createdAt: number;
+}
+
+export interface CustomList {
+  id: string;
+  name: string;
+  emoji: string;
+  type?: 'default' | 'hotel-breakfast' | 'home-cooking'; // special list types
+  restaurantIds: string[];   // rated restaurants
+  wishlistIds: string[];     // wishlisted restaurants
+  listRatings?: Record<string, RestaurantRating>; // per-list rating overrides keyed by restaurantId
+  recipes?: Recipe[];        // home-cooking recipes
+  createdAt: number;
+}
+
+export interface WishlistItem {
+  restaurantId: string;
+  name: string;
+  image: string;
+  cuisine: string;
+  price: string;
+  address: string;
+  notes: string;
+  listIds: string[];         // which lists this wishlist item belongs to
+  addedAt: number;
+}
+
+export interface TripRestaurant {
+  restaurantId: string;
+  name: string;
+  image: string;
+  cuisine: string;
+  price: string;
+  address: string;
+  night: number;
+  mealType: 'breakfast' | 'lunch' | 'dinner' | 'drinks' | 'snack';
+  rating?: RestaurantRating;
+  notes?: string;
+  reservationTime?: string;
+  reservationConfirmation?: string;
+  status: 'planned' | 'completed' | 'skipped';
+}
+
+export interface TripHotel {
+  id: string;
+  name: string;
+  address: string;
+  checkIn: string;
+  checkOut: string;
+  confirmationNumber?: string;
+  starRating?: number;
+  notes?: string;
+  image?: string;
+  placeId?: string;
+}
+
+export interface Trip {
+  id: string;
+  name: string;
+  destination: string;
+  destinationLat: number;
+  destinationLng: number;
+  startDate: string;
+  endDate: string;
+  coverImage?: string;
+  hotels: TripHotel[];
+  restaurants: TripRestaurant[];
+  notes?: string;
+  status: 'planning' | 'active' | 'completed';
+  createdAt: number;
+}
+
+export interface HomeMealDish {
+  id: string;
+  name: string;
+  description: string;
+  photo: string;           // base64 data-url
+  recipeLink: string;      // optional URL
+}
+
+export interface HomeMeal {
+  id: string;
+  name: string;
+  date: string;            // ISO date string
+  score: number;           // 0–10
+  wouldMakeAgain: boolean;
+  description: string;
+  photos: PhotoItem[];
+  tags: string[];
+  dishes: HomeMealDish[];
+  isPublic: boolean;
+  createdAt: number;
+  coverPhoto?: string;
+  prepTime?: number;
+  cookTime?: number;
+  servings?: number;
+  difficulty?: 'Easy' | 'Medium' | 'Hard';
+  cuisine?: string;
+  ingredients?: RecipeIngredient[];
+  steps?: string[];
+}
+
+interface ListsContextValue {
+  // Ratings
+  ratings: RestaurantRating[];
+  rateRestaurant: (rating: RestaurantRating) => void;
+  updateRating: (restaurantId: string, rating: Partial<RestaurantRating>) => void;
+  removeRating: (restaurantId: string) => void;
+  getRating: (restaurantId: string) => RestaurantRating | undefined;
+  /** Delete a single visit from the history timeline. If the visit
+   *  being deleted is the current (active) rating, the newest prior
+   *  visit is promoted to become the current rating — so the card
+   *  above always reflects the user's most recent kept visit. */
+  deleteVisit: (restaurantId: string, visitId: string) => void;
+
+  // Custom lists
+  lists: CustomList[];
+  createList: (name: string, emoji: string, type?: CustomList['type']) => void;
+  deleteList: (id: string) => void;
+  renameList: (id: string, name: string, emoji: string) => void;
+  addToList: (listId: string, restaurantId: string) => void;
+  removeFromList: (listId: string, restaurantId: string) => void;
+  addToWishlistInList: (listId: string, restaurantId: string) => void;
+  removeFromWishlistInList: (listId: string, restaurantId: string) => void;
+  getListsForRestaurant: (restaurantId: string) => CustomList[];
+  setListRating: (listId: string, rating: RestaurantRating) => void;
+  getListRating: (listId: string, restaurantId: string) => RestaurantRating | undefined;
+
+  // Restaurant metadata cache
+  restaurantMeta: Record<string, RestaurantMeta>;
+  cacheRestaurantMeta: (meta: Partial<RestaurantMeta> & { id: string }) => void;
+  getRestaurantInfo: (restaurantId: string) => RestaurantMeta | undefined;
+  /** Set an arbitrary key inside restaurantMeta and sync to cloud. Used by
+   *  the review system to stash __my_meal_reviews__ through the context
+   *  pipeline so it doesn't get overwritten by other meta syncs. */
+  stashMetaKey: (key: string, value: unknown) => void;
+
+  // Wishlist
+  wishlist: WishlistItem[];
+  addToWishlist: (item: WishlistItem) => void;
+  removeFromWishlist: (restaurantId: string) => void;
+  /** One-tap heart toggle. Adds the restaurant to the wishlist if it
+   *  isn't there yet, removes it if it is. No list-selection UI. */
+  toggleWishlist: (restaurant: RestaurantMeta) => void;
+  isWishlisted: (restaurantId: string) => boolean;
+  getWishlistItem: (restaurantId: string) => WishlistItem | undefined;
+
+  // Modals
+  ratingModalOpen: boolean;
+  ratingModalRestaurant: RestaurantMeta | null;
+  openRatingModal: (restaurant: RestaurantMeta) => void;
+  closeRatingModal: () => void;
+
+  addToListModalOpen: boolean;
+  addToListRestaurantId: string | null;
+  openAddToListModal: (restaurantId: string, meta?: RestaurantMeta) => void;
+  closeAddToListModal: () => void;
+
+  // Unified add restaurant modal (+ button → rating)
+  addRestaurantModalOpen: boolean;
+  addRestaurantModalMeta: RestaurantMeta | null;
+  addRestaurantModalInitialPage: string | null;
+  openAddRestaurantModal: (restaurant: RestaurantMeta, initialPage?: string) => void;
+  closeAddRestaurantModal: () => void;
+
+  // Wishlist modal (heart button)
+
+  // Recipes (home-cooking lists)
+  addRecipe: (listId: string, recipe: Recipe) => void;
+  updateRecipe: (listId: string, recipeId: string, updates: Partial<Recipe>) => void;
+  removeRecipe: (listId: string, recipeId: string) => void;
+  getRecipes: (listId: string) => Recipe[];
+
+  // Add recipe modal
+  addRecipeModalOpen: boolean;
+  addRecipeModalListId: string | null;
+  addRecipeModalRecipe: Recipe | null;
+  openAddRecipeModal: (listId: string, recipe?: Recipe) => void;
+  closeAddRecipeModal: () => void;
+
+  // Trips
+  trips: Trip[];
+  createTrip: (trip: Omit<Trip, 'id' | 'createdAt'>) => Trip;
+  updateTrip: (id: string, updates: Partial<Trip>) => void;
+  deleteTrip: (id: string) => void;
+  addRestaurantToTrip: (tripId: string, restaurant: TripRestaurant) => void;
+  updateTripRestaurant: (tripId: string, restaurantId: string, night: number, updates: Partial<TripRestaurant>) => void;
+  removeRestaurantFromTrip: (tripId: string, restaurantId: string, night: number) => void;
+  addHotelToTrip: (tripId: string, hotel: TripHotel) => void;
+  updateHotel: (tripId: string, hotelId: string, updates: Partial<TripHotel>) => void;
+  removeHotelFromTrip: (tripId: string, hotelId: string) => void;
+
+  // Custom ranking order
+  customOrder: string[];
+  setCustomOrder: (order: string[]) => void;
+
+
+  // Home meals
+  homeMeals: HomeMeal[];
+  createHomeMeal: (meal: Omit<HomeMeal, 'id' | 'createdAt'>) => HomeMeal;
+  createHomeMealsBulk: (meals: Array<Omit<HomeMeal, 'id' | 'createdAt'>>) => HomeMeal[];
+  updateHomeMeal: (id: string, updates: Partial<HomeMeal>) => void;
+  deleteHomeMeal: (id: string) => void;
+  getHomeMeal: (id: string) => HomeMeal | undefined;
+
+  // Home meal modal
+  homeMealModalOpen: boolean;
+  homeMealModalData: HomeMeal | null;
+  openHomeMealModal: (meal?: HomeMeal) => void;
+  closeHomeMealModal: () => void;
+}
+
+const STORAGE_KEY_HOME_MEALS = 'gourmad-home-meals';
+const STORAGE_KEY_RATINGS = 'gourmad-ratings';
+const STORAGE_KEY_LISTS = 'gourmad-lists';
+const STORAGE_KEY_WISHLIST = 'gourmad-wishlist';
+const STORAGE_KEY_META = 'gourmad-restaurant-meta';
+const STORAGE_KEY_TRIPS = 'gourmad-trips';
+const STORAGE_KEY_CUSTOM_ORDER = 'gourmad-custom-order';
+// Local-only mirror of the visit_history table so visit records
+// persist even when Supabase is unavailable or the user isn't signed
+// in yet. Keyed by restaurantId so the detail page can read it back.
+const STORAGE_KEY_VISIT_HISTORY = 'gourmad-visit-history';
+
+export interface LocalVisitRecord {
+  id: string;
+  restaurantId: string;
+  score: number;
+  notes: string;
+  visit_date: string;
+  tags: string[];
+  would_return: boolean;
+  photos: { url: string; caption: string; isFavorite: boolean }[];
+  friend_ids: string[];
+  created_at: string;
+}
+
+function loadLocalVisitHistory(): Record<string, LocalVisitRecord[]> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_VISIT_HISTORY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function appendLocalVisitRecord(restaurantId: string, rec: Omit<LocalVisitRecord, 'id' | 'created_at' | 'restaurantId'>) {
+  try {
+    const all = loadLocalVisitHistory();
+    const list = all[restaurantId] || [];
+    const entry: LocalVisitRecord = {
+      ...rec,
+      restaurantId,
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      created_at: new Date().toISOString(),
+    };
+    all[restaurantId] = [entry, ...list];
+    localStorage.setItem(STORAGE_KEY_VISIT_HISTORY, JSON.stringify(all));
+  } catch (err) { console.warn('[VisitHistory] appendLocal failed', err); }
+}
+
+/** Read local visit records for a restaurant (newest first). */
+export function readLocalVisitHistory(restaurantId: string): LocalVisitRecord[] {
+  const all = loadLocalVisitHistory();
+  return all[restaurantId] || [];
+}
+
+/** Remove a single local visit record by id. No-op if the id isn't
+ *  local (remote records are deleted through deleteVisitRecord). */
+function removeLocalVisitRecord(restaurantId: string, visitId: string) {
+  try {
+    const all = loadLocalVisitHistory();
+    const list = all[restaurantId] || [];
+    const next = list.filter((r) => r.id !== visitId);
+    if (next.length === list.length) return;
+    if (next.length === 0) delete all[restaurantId];
+    else all[restaurantId] = next;
+    localStorage.setItem(STORAGE_KEY_VISIT_HISTORY, JSON.stringify(all));
+  } catch (err) { console.warn('[VisitHistory] removeLocal failed', err); }
+}
+
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveToStorage(key: string, value: unknown) {
+  // Swallow QuotaExceededError (and any other localStorage failures) so they
+  // don't propagate out of setState updaters and crash the page render. The
+  // cloud sync layer is the source of truth — local persistence is best-effort.
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.warn(`[ListsContext] saveToStorage(${key}) failed:`, err);
+  }
+}
+
+const DEFAULT_LISTS: CustomList[] = [
+  { id: 'date-nights', name: 'Date Nights', emoji: '🕯️', restaurantIds: [], wishlistIds: [], createdAt: Date.now() - 4000 },
+  { id: 'hidden-gems', name: 'Hidden Gems', emoji: '💎', restaurantIds: [], wishlistIds: [], createdAt: Date.now() - 3000 },
+  { id: 'best-cocktails', name: 'Best Cocktails', emoji: '🍸', restaurantIds: [], wishlistIds: [], createdAt: Date.now() - 2000 },
+  { id: 'quick-bites', name: 'Quick Bites', emoji: '⚡', restaurantIds: [], wishlistIds: [], createdAt: Date.now() - 1000 },
+];
+
+// Migration: add wishlistIds to lists that don't have it
+function migrateLists(lists: CustomList[]): CustomList[] {
+  if (!Array.isArray(lists)) return DEFAULT_LISTS;
+  return lists.map((l) => ({
+    ...l,
+    wishlistIds: l.wishlistIds ?? [],
+  }));
+}
+
+// Strips stale Google Places photo URLs cached on RestaurantMeta entries
+// before photo fetching was disabled — see migrateRatings comment.
+//
+// Pass through any "__"-prefixed keys unmodified — those are stash slots
+// for fallback data (home meals, trips, custom order, my-meal-reviews)
+// stored *inside* restaurant_meta. They aren't real RestaurantMeta
+// entries, so applying the {...v, image: safeImage(v.image)} treatment
+// would corrupt them — for example, spreading a HomeMeal[] array into
+// an object literal turns it into {0: meal0, 1: meal1, …, image: undef},
+// which Array.isArray() then rejects on the next load and the fallback
+// silently returns []. That's how home cooking entries used to vanish
+// after the meta JSONB got rewritten for any other reason.
+function migrateMeta(meta: Record<string, RestaurantMeta> | null | undefined): Record<string, RestaurantMeta> {
+  if (!meta || typeof meta !== 'object') return {};
+  const out: Record<string, RestaurantMeta> = {};
+  for (const [k, v] of Object.entries(meta)) {
+    if (v == null) continue;
+    if (k.startsWith('__')) {
+      // Stash slot — preserve the value as-is.
+      out[k] = v as RestaurantMeta;
+      continue;
+    }
+    if (typeof v === 'object') out[k] = { ...v, image: safeImage(v.image) };
+  }
+  return out;
+}
+
+// Migration: add listIds, photos to ratings that don't have them. Also strips
+// stale Google Places photo URLs cached before photo fetching was disabled —
+// rendering them would trigger a billed Google API call per image.
+function migrateRatings(ratings: RestaurantRating[]): RestaurantRating[] {
+  if (!Array.isArray(ratings)) return [];
+  return ratings.map((r) => ({
+    ...r,
+    image: safeImage(r.image),
+    listIds: r.listIds ?? [],
+    friendIds: r.friendIds ?? [],
+    photos: (r.photos ?? []).map((p: PhotoItem | string) =>
+      typeof p === 'string' ? { url: p, caption: '', isFavorite: false } : p
+    ),
+  }));
+}
+
+// Migration: ensure every home meal has a unique id. A previous version of
+// Convert a Recipe (stored inside a recipe sub-list) to a HomeMeal so it
+// can live in the "All Recipes" cookbook pool too. The Recipe is the
+// source of truth; the HomeMeal is a mirror that shares its id.
+function recipeToHomeMeal(r: Recipe): HomeMeal {
+  return {
+    id: r.id,
+    name: r.title,
+    date: new Date(r.createdAt || Date.now()).toISOString().slice(0, 10),
+    score: r.score ?? 0,
+    wouldMakeAgain: (r.score ?? 0) >= 7,
+    description: r.description ?? '',
+    photos: r.photos ?? [],
+    tags: r.tags ?? [],
+    dishes: [],
+    isPublic: !r.isPrivate,
+    createdAt: r.createdAt || Date.now(),
+    coverPhoto: r.coverPhoto,
+    prepTime: r.prepTime,
+    cookTime: r.cookTime,
+    servings: r.servings,
+    difficulty: r.difficulty,
+    cuisine: r.cuisine,
+    ingredients: r.ingredients,
+    steps: r.steps,
+  };
+}
+
+// Field-level translation for recipe updates so we don't clobber HomeMeal-
+// only fields when the user edits a Recipe. Skip Recipe-only fields like
+// isPrivate (handled separately) or absent fields.
+function recipeUpdatesToHomeMeal(u: Partial<Recipe>): Partial<HomeMeal> {
+  const out: Partial<HomeMeal> = {};
+  if (u.title !== undefined) out.name = u.title;
+  if (u.description !== undefined) out.description = u.description;
+  if (u.coverPhoto !== undefined) out.coverPhoto = u.coverPhoto;
+  if (u.prepTime !== undefined) out.prepTime = u.prepTime;
+  if (u.cookTime !== undefined) out.cookTime = u.cookTime;
+  if (u.servings !== undefined) out.servings = u.servings;
+  if (u.difficulty !== undefined) out.difficulty = u.difficulty;
+  if (u.cuisine !== undefined) out.cuisine = u.cuisine;
+  if (u.ingredients !== undefined) out.ingredients = u.ingredients;
+  if (u.steps !== undefined) out.steps = u.steps;
+  if (u.photos !== undefined) out.photos = u.photos;
+  if (u.tags !== undefined) out.tags = u.tags;
+  if (u.score !== undefined) out.score = u.score;
+  if (u.isPrivate !== undefined) out.isPublic = !u.isPrivate;
+  return out;
+}
+
+// createHomeMeal used `meal-${Date.now()}` which collides when called in a
+// tight loop (bulk import), so old data may have many meals sharing one id —
+// breaking detail navigation and dedupe. Re-id the duplicates so each row is
+// reachable again.
+function migrateHomeMeals(meals: HomeMeal[]): HomeMeal[] {
+  if (!Array.isArray(meals)) return [];
+  const seen = new Set<string>();
+  return meals.map((m) => {
+    if (!m?.id || seen.has(m.id)) {
+      const uniq = `meal-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      seen.add(uniq);
+      return { ...m, id: uniq };
+    }
+    seen.add(m.id);
+    return m;
+  });
+}
+
+// Migration: add notes, listIds to wishlist items that don't have them. Also
+// strips stale Google Places photo URLs (see migrateRatings above).
+function migrateWishlist(items: WishlistItem[]): WishlistItem[] {
+  if (!Array.isArray(items)) return [];
+  return items.map((w) => ({
+    ...w,
+    image: safeImage(w.image),
+    notes: w.notes ?? '',
+    listIds: w.listIds ?? [],
+  }));
+}
+
+const ListsContext = createContext<ListsContextValue | null>(null);
+
+export const ListsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { user, profile: authProfile } = useAuth();
+  const { showToast } = useToast();
+  const userId = user?.id ?? null;
+
+  const [ratings, setRatings] = useState<RestaurantRating[]>(() => migrateRatings(loadFromStorage(STORAGE_KEY_RATINGS, [])));
+  const [lists, setLists] = useState<CustomList[]>(() => migrateLists(loadFromStorage(STORAGE_KEY_LISTS, DEFAULT_LISTS)));
+  const [wishlist, setWishlist] = useState<WishlistItem[]>(() => migrateWishlist(loadFromStorage(STORAGE_KEY_WISHLIST, [])));
+  const [restaurantMeta, setRestaurantMeta] = useState<Record<string, RestaurantMeta>>(() => migrateMeta(loadFromStorage(STORAGE_KEY_META, {})));
+  const [trips, setTrips] = useState<Trip[]>(() => loadFromStorage(STORAGE_KEY_TRIPS, []));
+  const [customOrder, setCustomOrderState] = useState<string[]>(() => loadFromStorage(STORAGE_KEY_CUSTOM_ORDER, []));
+  const [homeMeals, setHomeMeals] = useState<HomeMeal[]>(() => migrateHomeMeals(loadFromStorage(STORAGE_KEY_HOME_MEALS, [])));
+  const [cloudLoaded, setCloudLoaded] = useState(false);
+
+  // Track userId and profile for cloud save helpers
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
+  const isPublicRef = useRef(authProfile?.is_public ?? true);
+  isPublicRef.current = authProfile?.is_public ?? true;
+
+  // ── Load data from Supabase when user signs in ──
+  useEffect(() => {
+    if (!userId || !supabaseConfigured) {
+      if (!supabaseConfigured) console.warn('[Supabase] Not configured — data will only be in localStorage');
+      return;
+    }
+
+    // Check if localStorage belongs to a different user — if so, clear it
+    const storedUserId = localStorage.getItem('gourmad-user-id');
+    if (storedUserId && storedUserId !== userId) {
+      localStorage.removeItem(STORAGE_KEY_RATINGS);
+      localStorage.removeItem(STORAGE_KEY_LISTS);
+      localStorage.removeItem(STORAGE_KEY_WISHLIST);
+      localStorage.removeItem(STORAGE_KEY_META);
+      localStorage.removeItem(STORAGE_KEY_TRIPS);
+      localStorage.removeItem(STORAGE_KEY_CUSTOM_ORDER);
+      localStorage.removeItem(STORAGE_KEY_HOME_MEALS);
+      localStorage.removeItem('gourmad-recent-views');
+      // Reset state to empty
+      setRatings([]);
+      setLists(DEFAULT_LISTS);
+      setWishlist([]);
+      setRestaurantMeta({});
+      setTrips([]);
+      setCustomOrderState([]);
+      setHomeMeals([]);
+    }
+    try { localStorage.setItem('gourmad-user-id', userId); } catch { /* quota — best-effort */ }
+
+    let cancelled = false;
+
+    (async () => {
+      const cloud = await loadUserData(userId);
+      if (cancelled) return;
+
+      if (cloud) {
+        // Cloud row found — use cloud data, merging with any local data that might be newer
+        const localRatings = loadFromStorage<RestaurantRating[]>(STORAGE_KEY_RATINGS, []);
+        const localLists = loadFromStorage<RestaurantList[]>(STORAGE_KEY_LISTS, []);
+        const localWishlist = loadFromStorage<WishlistItem[]>(STORAGE_KEY_WISHLIST, []);
+        const localHomeMeals = loadFromStorage<HomeMeal[]>(STORAGE_KEY_HOME_MEALS, []);
+
+        // If both cloud and local ratings are empty, try to recover from community_ratings
+        // (published ratings survive even if user_app_data.ratings got wiped).
+        let recoveredRatings: RestaurantRating[] = [];
+        if (cloud.ratings.length === 0 && localRatings.length === 0) {
+          try {
+            const communityRows = await getUserRatings(userId);
+            if (communityRows.length > 0) {
+              recoveredRatings = communityRows.map((r) => ({
+                restaurantId: r.restaurant_id,
+                name: r.restaurant_name,
+                image: r.photo_url || '',
+                cuisine: r.cuisine || '',
+                price: r.price || '',
+                address: r.address || '',
+                score: Number(r.score) || 0,
+                notes: r.notes || '',
+                visitDate: r.visit_date || '',
+                wouldReturn: r.would_return ?? true,
+                tags: r.tags || [],
+                photos: [],
+                listIds: [],
+                friendIds: r.friend_ids || [],
+                createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
+              }));
+            }
+          } catch (err) { console.warn('[Supabase] community_ratings recovery failed:', err); }
+        }
+
+        // Use cloud data, but if cloud is empty and local has content, keep local
+        const cloudRatings = migrateRatings(
+          cloud.ratings.length > 0 ? cloud.ratings : localRatings.length > 0 ? localRatings : recoveredRatings
+        );
+        const baseCloudLists = migrateLists(
+          cloud.lists.length > 0 ? cloud.lists : localLists.length > 0 ? localLists : DEFAULT_LISTS
+        );
+        // Top-level pick (cloud or local) used to silently wipe anything
+        // local had that cloud didn't — recipes added to a list right
+        // before close, restaurants just dropped into a wishlist, even
+        // entire lists created on this device but never synced. Merge
+        // local additions in by id so a slightly-stale cloud snapshot
+        // can't erase work the user already saw committed locally.
+        const cloudLists = (() => {
+          const localById = new Map<string, CustomList>(
+            (localLists as CustomList[]).map((l) => [l.id, l]),
+          );
+          const merged = baseCloudLists.map((cl) => {
+            const ll = localById.get(cl.id);
+            if (!ll) return cl;
+            const cloudRecipeIds = new Set((cl.recipes || []).map((r) => r.id));
+            const localOnlyRecipes = (ll.recipes || []).filter((r) => r && r.id && !cloudRecipeIds.has(r.id));
+            const cloudRestaurantIds = new Set(cl.restaurantIds || []);
+            const localOnlyRestaurantIds = (ll.restaurantIds || []).filter((id) => id && !cloudRestaurantIds.has(id));
+            const cloudWishlistIds = new Set(cl.wishlistIds || []);
+            const localOnlyWishlistIds = (ll.wishlistIds || []).filter((id) => id && !cloudWishlistIds.has(id));
+            if (localOnlyRecipes.length === 0 && localOnlyRestaurantIds.length === 0 && localOnlyWishlistIds.length === 0) {
+              return cl;
+            }
+            return {
+              ...cl,
+              recipes: localOnlyRecipes.length > 0
+                ? [...(cl.recipes || []), ...localOnlyRecipes]
+                : cl.recipes,
+              restaurantIds: localOnlyRestaurantIds.length > 0
+                ? [...(cl.restaurantIds || []), ...localOnlyRestaurantIds]
+                : cl.restaurantIds,
+              wishlistIds: localOnlyWishlistIds.length > 0
+                ? [...(cl.wishlistIds || []), ...localOnlyWishlistIds]
+                : cl.wishlistIds,
+            };
+          });
+          // Local-only lists (created before sync completed) are appended
+          // so the user doesn't lose a freshly-created list on reload.
+          const baseIds = new Set(baseCloudLists.map((l) => l.id));
+          const localOnlyLists = (localLists as CustomList[]).filter((l) => l && l.id && !baseIds.has(l.id));
+          return [...merged, ...localOnlyLists];
+        })();
+        // Track whether the merge actually rescued anything — if so we
+        // need to push the unioned set back to the cloud so subsequent
+        // reloads see it without relying on local cache again.
+        const listsMergedFromLocal = cloudLists.length !== baseCloudLists.length
+          || cloudLists.some((l, i) => l !== baseCloudLists[i]);
+        const cloudWishlist = migrateWishlist(
+          cloud.wishlist.length > 0 ? cloud.wishlist : localWishlist.length > 0 ? localWishlist : []
+        );
+        const cloudMeta = cloud.restaurantMeta || {};
+        // Restore trips: try dedicated column first, fall back to __trips__ in meta
+        const cloudTrips = ((cloud as any).trips && (cloud as any).trips.length > 0)
+          ? (cloud as any).trips
+          : (Array.isArray((cloudMeta as any).__trips__) ? (cloudMeta as any).__trips__ : []);
+        const cloudRecentViews = cloud.recentViews || [];
+        // Restore custom order from meta
+        const cloudCustomOrder = Array.isArray((cloudMeta as any).__custom_order__) ? (cloudMeta as any).__custom_order__ as string[] : [];
+        // Home meals recovery order:
+        //   1. dedicated home_meals column (may be missing on some schemas)
+        //   2. restaurant_meta.__home_meals__ fallback (always works)
+        //   3. localStorage (in case both cloud locations are empty)
+        const rawCloudHomeMeals = cloud.homeMeals || [];
+        const metaHomeMeals = Array.isArray((cloudMeta as Record<string, unknown>).__home_meals__)
+          ? ((cloudMeta as Record<string, unknown>).__home_meals__ as HomeMeal[])
+          : [];
+        // Pick the strongest available source first (column → meta → local),
+        // then *union* with localStorage so freshly-created entries that
+        // haven't yet round-tripped to the cloud aren't wiped out by an
+        // older cloud snapshot. Cloud wins on id conflicts (so an edit on
+        // another device beats a stale local copy); brand-new local-only
+        // entries survive.
+        const baseCloudHomeMeals: HomeMeal[] = rawCloudHomeMeals.length > 0
+          ? rawCloudHomeMeals
+          : metaHomeMeals.length > 0
+            ? metaHomeMeals
+            : [];
+        const mergedById = new Map<string, HomeMeal>();
+        for (const m of localHomeMeals) if (m && m.id) mergedById.set(m.id, m);
+        for (const m of baseCloudHomeMeals) if (m && m.id) mergedById.set(m.id, m);
+        const cloudHomeMeals = migrateHomeMeals(Array.from(mergedById.values()));
+        // We need to push back to cloud whenever local had something cloud
+        // didn't — that's how the unioned set lands in the dedicated column.
+        const localOnlyIds = localHomeMeals.filter((m) => m && m.id && !baseCloudHomeMeals.some((c) => c.id === m.id));
+        const homeMealsUsedLocalFallback = localOnlyIds.length > 0
+          || (rawCloudHomeMeals.length === 0 && metaHomeMeals.length === 0 && localHomeMeals.length > 0);
+
+        // Reconcile: ensure every rating's listIds are reflected in
+        // list.restaurantIds (fixes data drift where ratings exist but
+        // lists lost their restaurantIds references).
+        const reconciledLists = cloudLists.map((l) => {
+          const missing = cloudRatings
+            .filter((r) => r.listIds.includes(l.id) && !l.restaurantIds.includes(r.restaurantId))
+            .map((r) => r.restaurantId);
+          return missing.length > 0
+            ? { ...l, restaurantIds: [...l.restaurantIds, ...missing] }
+            : l;
+        });
+        const listsChanged = reconciledLists.some((l, i) => l !== cloudLists[i]);
+
+        setRatings(cloudRatings);
+        setLists(listsChanged ? reconciledLists : cloudLists);
+        setWishlist(cloudWishlist);
+        setRestaurantMeta(migrateMeta(cloudMeta));
+        setTrips(cloudTrips as Trip[]);
+        setCustomOrderState(cloudCustomOrder);
+        setHomeMeals(cloudHomeMeals);
+
+        // Also update localStorage as cache
+        saveToStorage(STORAGE_KEY_RATINGS, cloudRatings);
+        saveToStorage(STORAGE_KEY_LISTS, listsChanged ? reconciledLists : cloudLists);
+        saveToStorage(STORAGE_KEY_WISHLIST, cloudWishlist);
+        saveToStorage(STORAGE_KEY_META, cloudMeta);
+        saveToStorage(STORAGE_KEY_TRIPS, cloudTrips);
+        saveToStorage(STORAGE_KEY_CUSTOM_ORDER, cloudCustomOrder);
+        saveToStorage(STORAGE_KEY_HOME_MEALS, cloudHomeMeals);
+        if (cloudRecentViews.length > 0) {
+          try { localStorage.setItem('gourmad-recent-views', JSON.stringify(cloudRecentViews)); } catch { /* quota — best-effort */ }
+        }
+
+        // If we used local fallback data (cloud was empty but local had
+        // content), reconciled, or merged local-only list contents into
+        // cloud lists, push the union back so subsequent reloads see it
+        // even if localStorage gets cleared.
+        const finalLists = listsChanged ? reconciledLists : cloudLists;
+        if ((cloud.ratings.length === 0 && cloudRatings.length > 0) || listsChanged || listsMergedFromLocal || homeMealsUsedLocalFallback) {
+          await saveUserData(userId, { ratings: cloudRatings, lists: finalLists, wishlist: cloudWishlist, restaurantMeta: cloudMeta, recentViews: cloudRecentViews, trips: cloudTrips as Trip[], homeMeals: cloudHomeMeals });
+        }
+
+        // Sync all ratings to community_ratings (ensures they're visible on user profiles)
+        if (cloudRatings.length > 0) {
+          for (const r of cloudRatings) {
+            publishCommunityRating(userId, r.restaurantId, {
+              name: r.name, score: r.score, notes: r.notes,
+              cuisine: r.cuisine, price: r.price, address: r.address,
+              visitDate: r.visitDate, tags: r.tags, wouldReturn: r.wouldReturn,
+              friendIds: r.friendIds || [], photoUrl: r.image || '',
+            });
+            if (r.photos && r.photos.length > 0 && isPublicRef.current) {
+              publishCommunityPhotos(userId, r.restaurantId, r.photos).catch(() => {});
+            }
+          }
+        }
+      } else {
+        // No cloud row exists — keep any existing local data and push it to cloud
+        const localRatings = migrateRatings(loadFromStorage<RestaurantRating[]>(STORAGE_KEY_RATINGS, []));
+        const localLists = migrateLists(loadFromStorage<RestaurantList[]>(STORAGE_KEY_LISTS, DEFAULT_LISTS));
+        const localWishlist = migrateWishlist(loadFromStorage<WishlistItem[]>(STORAGE_KEY_WISHLIST, []));
+        const localMeta = migrateMeta(loadFromStorage<Record<string, RestaurantMeta>>(STORAGE_KEY_META, {}));
+        const localTrips = loadFromStorage<Trip[]>(STORAGE_KEY_TRIPS, []);
+        const localHomeMeals = migrateHomeMeals(loadFromStorage<HomeMeal[]>(STORAGE_KEY_HOME_MEALS, []));
+
+        setRatings(localRatings);
+        setLists(localLists);
+        setWishlist(localWishlist);
+        setRestaurantMeta(localMeta);
+        setTrips(localTrips);
+        setHomeMeals(localHomeMeals);
+
+        // Save local data to cloud so it persists.
+        // Re-read localStorage at save time so a toggle the user made while
+        // loadUserData was in flight (e.g. tapping a heart on the first
+        // visible card) is included in the upsert instead of being clobbered
+        // by the snapshot we captured at the top of this branch.
+        await saveUserData(userId, {
+          ratings: migrateRatings(loadFromStorage<RestaurantRating[]>(STORAGE_KEY_RATINGS, [])),
+          lists: migrateLists(loadFromStorage<RestaurantList[]>(STORAGE_KEY_LISTS, DEFAULT_LISTS)),
+          wishlist: migrateWishlist(loadFromStorage<WishlistItem[]>(STORAGE_KEY_WISHLIST, [])),
+          restaurantMeta: migrateMeta(loadFromStorage<Record<string, RestaurantMeta>>(STORAGE_KEY_META, {})),
+          recentViews: [],
+          trips: loadFromStorage<Trip[]>(STORAGE_KEY_TRIPS, []),
+          homeMeals: migrateHomeMeals(loadFromStorage<HomeMeal[]>(STORAGE_KEY_HOME_MEALS, [])),
+          chats: [],
+          chatsRead: {},
+        });
+      }
+
+      setCloudLoaded(true);
+    })();
+
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  // ── Helper to save to Supabase in the background ──
+  const syncRatingsToCloud = useCallback((data: RestaurantRating[]) => {
+    if (userIdRef.current && supabaseConfigured) {
+      // Strip large base64 photos before syncing to avoid payload size issues
+      const stripped = data.map((r) => ({
+        ...r,
+        photos: r.photos.map((p) => ({
+          ...p,
+          // Truncate URLs over 100KB to prevent Supabase payload errors
+          url: p.url.length > 100000 ? p.url.slice(0, 100000) : p.url,
+        })),
+      }));
+      saveRatings(userIdRef.current, stripped);
+    }
+  }, []);
+  const syncListsToCloud = useCallback((data: CustomList[]) => {
+    if (userIdRef.current && supabaseConfigured) saveLists(userIdRef.current, data);
+  }, []);
+  const syncWishlistToCloud = useCallback((data: WishlistItem[]) => {
+    if (userIdRef.current && supabaseConfigured) saveWishlistData(userIdRef.current, data);
+  }, []);
+  const syncMetaToCloud = useCallback((data: Record<string, RestaurantMeta>) => {
+    if (userIdRef.current && supabaseConfigured) saveMetaData(userIdRef.current, data);
+  }, []);
+  const syncTripsToCloud = useCallback((data: Trip[]) => {
+    if (userIdRef.current && supabaseConfigured) {
+      // Save trips via the dedicated column (may fail if column doesn't exist)
+      saveTrips(userIdRef.current, data);
+      // Also save trips inside restaurant_meta as a fallback (always works)
+      setRestaurantMeta((prev) => {
+        const next = { ...prev, __trips__: data as unknown as RestaurantMeta };
+        saveToStorage(STORAGE_KEY_META, next);
+        syncMetaToCloud(next);
+        return next;
+      });
+    }
+  }, [syncMetaToCloud]);
+
+  // ── Custom Order ──
+  const setCustomOrder = useCallback((order: string[]) => {
+    setCustomOrderState(order);
+    saveToStorage(STORAGE_KEY_CUSTOM_ORDER, order);
+    // Persist inside restaurant_meta for cloud sync
+    setRestaurantMeta((prev) => {
+      const next = { ...prev, __custom_order__: order as unknown as RestaurantMeta };
+      saveToStorage(STORAGE_KEY_META, next);
+      syncMetaToCloud(next);
+      return next;
+    });
+  }, [syncMetaToCloud]);
+
+  // ── Home Meals cloud sync ──
+  // ── Trip CRUD ──
+  const createTrip = useCallback((trip: Omit<Trip, 'id' | 'createdAt'>): Trip => {
+    const newTrip: Trip = { ...trip, id: `trip-${Date.now()}`, createdAt: Date.now() };
+    setTrips((prev) => {
+      const next = [...prev, newTrip];
+      saveToStorage(STORAGE_KEY_TRIPS, next);
+      syncTripsToCloud(next);
+      return next;
+    });
+    return newTrip;
+  }, [syncTripsToCloud]);
+
+  const updateTrip = useCallback((id: string, updates: Partial<Trip>) => {
+    setTrips((prev) => {
+      const next = prev.map((t) => t.id === id ? { ...t, ...updates } : t);
+      saveToStorage(STORAGE_KEY_TRIPS, next);
+      syncTripsToCloud(next);
+      return next;
+    });
+  }, [syncTripsToCloud]);
+
+  const deleteTrip = useCallback((id: string) => {
+    setTrips((prev) => {
+      const next = prev.filter((t) => t.id !== id);
+      saveToStorage(STORAGE_KEY_TRIPS, next);
+      syncTripsToCloud(next);
+      return next;
+    });
+  }, [syncTripsToCloud]);
+
+  const addRestaurantToTrip = useCallback((tripId: string, restaurant: TripRestaurant) => {
+    setTrips((prev) => {
+      const next = prev.map((t) => t.id === tripId ? { ...t, restaurants: [...t.restaurants, restaurant] } : t);
+      saveToStorage(STORAGE_KEY_TRIPS, next);
+      syncTripsToCloud(next);
+      return next;
+    });
+  }, [syncTripsToCloud]);
+
+  const updateTripRestaurant = useCallback((tripId: string, restaurantId: string, night: number, updates: Partial<TripRestaurant>) => {
+    setTrips((prev) => {
+      const next = prev.map((t) => t.id === tripId ? {
+        ...t,
+        restaurants: t.restaurants.map((r) =>
+          r.restaurantId === restaurantId && r.night === night ? { ...r, ...updates } : r
+        ),
+      } : t);
+      saveToStorage(STORAGE_KEY_TRIPS, next);
+      syncTripsToCloud(next);
+      return next;
+    });
+  }, [syncTripsToCloud]);
+
+  const removeRestaurantFromTrip = useCallback((tripId: string, restaurantId: string, night: number) => {
+    setTrips((prev) => {
+      const next = prev.map((t) => t.id === tripId ? {
+        ...t,
+        restaurants: t.restaurants.filter((r) => !(r.restaurantId === restaurantId && r.night === night)),
+      } : t);
+      saveToStorage(STORAGE_KEY_TRIPS, next);
+      syncTripsToCloud(next);
+      return next;
+    });
+  }, [syncTripsToCloud]);
+
+  const addHotelToTrip = useCallback((tripId: string, hotel: TripHotel) => {
+    setTrips((prev) => {
+      const next = prev.map((t) => t.id === tripId ? { ...t, hotels: [...t.hotels, hotel] } : t);
+      saveToStorage(STORAGE_KEY_TRIPS, next);
+      syncTripsToCloud(next);
+      return next;
+    });
+  }, [syncTripsToCloud]);
+
+  const updateHotel = useCallback((tripId: string, hotelId: string, updates: Partial<TripHotel>) => {
+    setTrips((prev) => {
+      const next = prev.map((t) => t.id === tripId ? {
+        ...t,
+        hotels: t.hotels.map((h) => h.id === hotelId ? { ...h, ...updates } : h),
+      } : t);
+      saveToStorage(STORAGE_KEY_TRIPS, next);
+      syncTripsToCloud(next);
+      return next;
+    });
+  }, [syncTripsToCloud]);
+
+  const removeHotelFromTrip = useCallback((tripId: string, hotelId: string) => {
+    setTrips((prev) => {
+      const next = prev.map((t) => t.id === tripId ? {
+        ...t,
+        hotels: t.hotels.filter((h) => h.id !== hotelId),
+      } : t);
+      saveToStorage(STORAGE_KEY_TRIPS, next);
+      syncTripsToCloud(next);
+      return next;
+    });
+  }, [syncTripsToCloud]);
+
+  // ── Recipe CRUD ──
+  // The CRUD callbacks themselves are declared further down so they can
+  // reference syncHomeMealsToCloud — recipes added to any recipe list are
+  // mirrored into the global homeMeals pool ("All Recipes" on the Recipes
+  // tab). Only getRecipes lives up here since it's a plain selector.
+  const getRecipes = useCallback((listId: string): Recipe[] => {
+    const list = lists.find((l) => l.id === listId);
+    return list?.recipes || [];
+  }, [lists]);
+
+  // Add recipe modal state
+  const [addRecipeModalOpen, setAddRecipeModalOpen] = useState(false);
+  const [addRecipeModalListId, setAddRecipeModalListId] = useState<string | null>(null);
+  const [addRecipeModalRecipe, setAddRecipeModalRecipe] = useState<Recipe | null>(null);
+
+  const openAddRecipeModal = useCallback((listId: string, recipe?: Recipe) => {
+    setAddRecipeModalListId(listId);
+    setAddRecipeModalRecipe(recipe || null);
+    setAddRecipeModalOpen(true);
+  }, []);
+
+  const closeAddRecipeModal = useCallback(() => {
+    setAddRecipeModalOpen(false);
+    setAddRecipeModalListId(null);
+    setAddRecipeModalRecipe(null);
+  }, []);
+
+  // ── Home Meal sync + CRUD ──
+  // Save to the dedicated home_meals column if it exists, AND stash a copy
+  // inside restaurant_meta.__home_meals__ as a reliable fallback. The
+  // dedicated column may fail (missing column, payload size, RLS, etc.);
+  // the meta fallback uses a column that is always present, which is what
+  // we already do for trips and custom_order.
+  const syncHomeMealsToCloud = useCallback((data: HomeMeal[]) => {
+    if (!userIdRef.current || !supabaseConfigured) return;
+    saveHomeMeals(userIdRef.current, data);
+    setRestaurantMeta((prev) => {
+      const next = { ...prev, __home_meals__: data as unknown as RestaurantMeta };
+      saveToStorage(STORAGE_KEY_META, next);
+      syncMetaToCloud(next);
+      return next;
+    });
+  }, [syncMetaToCloud]);
+
+  // Recipe CRUD that mirrors into homeMeals — defined here so it can
+  // reference syncHomeMealsToCloud. addRecipe always mirrors (new id);
+  // updateRecipe propagates edits if a mirror exists; removeRecipe only
+  // drops the entry from the sub-list — the recipe lives on in the
+  // "All Recipes" cookbook so the user can still find it after reorg.
+  const addRecipe = useCallback((listId: string, recipe: Recipe) => {
+    setLists((prev) => {
+      const next = prev.map((l) => l.id === listId ? { ...l, recipes: [...(l.recipes || []), recipe] } : l);
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+    setHomeMeals((prev) => {
+      if (prev.some((m) => m.id === recipe.id)) return prev;
+      const next = [...prev, recipeToHomeMeal(recipe)];
+      saveToStorage(STORAGE_KEY_HOME_MEALS, next);
+      syncHomeMealsToCloud(next);
+      return next;
+    });
+  }, [syncListsToCloud, syncHomeMealsToCloud]);
+
+  const updateRecipe = useCallback((listId: string, recipeId: string, updates: Partial<Recipe>) => {
+    setLists((prev) => {
+      const next = prev.map((l) => l.id === listId ? { ...l, recipes: (l.recipes || []).map((r) => r.id === recipeId ? { ...r, ...updates } : r) } : l);
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+    setHomeMeals((prev) => {
+      if (!prev.some((m) => m.id === recipeId)) return prev;
+      const next = prev.map((m) => m.id === recipeId ? { ...m, ...recipeUpdatesToHomeMeal(updates) } : m);
+      saveToStorage(STORAGE_KEY_HOME_MEALS, next);
+      syncHomeMealsToCloud(next);
+      return next;
+    });
+  }, [syncListsToCloud, syncHomeMealsToCloud]);
+
+  const removeRecipe = useCallback((listId: string, recipeId: string) => {
+    setLists((prev) => {
+      const next = prev.map((l) => l.id === listId ? { ...l, recipes: (l.recipes || []).filter((r) => r.id !== recipeId) } : l);
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+  }, [syncListsToCloud]);
+
+  // Generate a meal id that's unique even when createHomeMeal is called many
+  // times in the same tick (e.g. a bulk import). Date.now() alone collides
+  // inside a synchronous loop, which would make every imported meal share an
+  // id — breaking detail navigation and getting deduped on render.
+  const newMealId = () => `meal-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+  const createHomeMeal = useCallback((meal: Omit<HomeMeal, 'id' | 'createdAt'>): HomeMeal => {
+    const newMeal: HomeMeal = { ...meal, id: newMealId(), createdAt: Date.now() };
+    setHomeMeals((prev) => {
+      const next = [...prev, newMeal];
+      saveToStorage(STORAGE_KEY_HOME_MEALS, next);
+      syncHomeMealsToCloud(next);
+      return next;
+    });
+    return newMeal;
+  }, [syncHomeMealsToCloud]);
+
+  // Bulk variant for imports: appends every meal to state in a single update
+  // and fires exactly one cloud save. Calling createHomeMeal in a tight loop
+  // would otherwise launch N concurrent PATCH requests, and whichever one
+  // resolves last wins — so an early snapshot with only a few rows can clobber
+  // the final array.
+  const createHomeMealsBulk = useCallback((meals: Array<Omit<HomeMeal, 'id' | 'createdAt'>>): HomeMeal[] => {
+    if (meals.length === 0) return [];
+    const now = Date.now();
+    const newMeals: HomeMeal[] = meals.map((m) => ({
+      ...m,
+      id: newMealId(),
+      createdAt: now,
+    }));
+    setHomeMeals((prev) => {
+      const next = [...prev, ...newMeals];
+      saveToStorage(STORAGE_KEY_HOME_MEALS, next);
+      syncHomeMealsToCloud(next);
+      return next;
+    });
+    return newMeals;
+  }, [syncHomeMealsToCloud]);
+
+  const updateHomeMeal = useCallback((id: string, updates: Partial<HomeMeal>) => {
+    setHomeMeals((prev) => {
+      const next = prev.map((m) => m.id === id ? { ...m, ...updates } : m);
+      saveToStorage(STORAGE_KEY_HOME_MEALS, next);
+      syncHomeMealsToCloud(next);
+      return next;
+    });
+  }, [syncHomeMealsToCloud]);
+
+  const deleteHomeMeal = useCallback((id: string) => {
+    setHomeMeals((prev) => {
+      const next = prev.filter((m) => m.id !== id);
+      saveToStorage(STORAGE_KEY_HOME_MEALS, next);
+      syncHomeMealsToCloud(next);
+      return next;
+    });
+  }, [syncHomeMealsToCloud]);
+
+  const getHomeMeal = useCallback((id: string) => homeMeals.find((m) => m.id === id), [homeMeals]);
+
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [ratingModalRestaurant, setRatingModalRestaurant] = useState<RestaurantMeta | null>(null);
+  const [addToListModalOpen, setAddToListModalOpen] = useState(false);
+  const [addToListRestaurantId, setAddToListRestaurantId] = useState<string | null>(null);
+  const [addRestaurantModalOpen, setAddRestaurantModalOpen] = useState(false);
+  const [addRestaurantModalMeta, setAddRestaurantModalMeta] = useState<RestaurantMeta | null>(null);
+  const [addRestaurantModalInitialPage, setAddRestaurantModalInitialPage] = useState<string | null>(null);
+  const [homeMealModalOpen, setHomeMealModalOpen] = useState(false);
+  const [homeMealModalData, setHomeMealModalData] = useState<HomeMeal | null>(null);
+
+  // Restaurant metadata cache
+  const cacheRestaurantMeta = useCallback((meta: Partial<RestaurantMeta> & { id: string }) => {
+    // Defensively strip any Google Places photo URL so we never persist a
+    // URL whose render would trigger a billed Google API call.
+    const cleaned: Partial<RestaurantMeta> & { id: string } = {
+      ...meta,
+      ...(meta.image !== undefined ? { image: safeImage(meta.image) } : {}),
+    };
+    setRestaurantMeta((prev) => {
+      // Merge with existing entry so we don't drop coordinate or other
+      // fields the new caller didn't bother to provide. (e.g. the heart
+      // toggle has only id/name/image/cuisine/price/address — it would
+      // otherwise wipe lat/lng cached by useRestaurantDetail.)
+      const existing = prev[cleaned.id];
+      const merged: RestaurantMeta = existing
+        ? {
+            ...existing,
+            ...cleaned,
+            lat: cleaned.lat ?? existing.lat,
+            lng: cleaned.lng ?? existing.lng,
+            addressComponents: cleaned.addressComponents ?? existing.addressComponents,
+            neighborhood: cleaned.neighborhood ?? existing.neighborhood,
+          } as RestaurantMeta
+        : ({
+            id: cleaned.id,
+            name: cleaned.name ?? '',
+            image: cleaned.image ?? '',
+            cuisine: cleaned.cuisine ?? '',
+            price: cleaned.price ?? '',
+            address: cleaned.address ?? '',
+            lat: cleaned.lat,
+            lng: cleaned.lng,
+            addressComponents: cleaned.addressComponents,
+            neighborhood: cleaned.neighborhood,
+          } as RestaurantMeta);
+      const next = { ...prev, [cleaned.id]: merged };
+      saveToStorage(STORAGE_KEY_META, next);
+      syncMetaToCloud(next);
+      return next;
+    });
+  }, [syncMetaToCloud]);
+
+  const stashMetaKey = useCallback((key: string, value: unknown) => {
+    setRestaurantMeta((prev) => {
+      const next = { ...prev, [key]: value as RestaurantMeta };
+      saveToStorage(STORAGE_KEY_META, next);
+      syncMetaToCloud(next);
+      return next;
+    });
+  }, [syncMetaToCloud]);
+
+  const getRestaurantInfo = useCallback((restaurantId: string): RestaurantMeta | undefined => {
+    if (restaurantMeta[restaurantId]) return restaurantMeta[restaurantId];
+    const rated = ratings.find((r) => r.restaurantId === restaurantId);
+    if (rated) return { id: rated.restaurantId, name: rated.name, image: rated.image, cuisine: rated.cuisine, price: rated.price, address: rated.address };
+    const wished = wishlist.find((w) => w.restaurantId === restaurantId);
+    if (wished) return { id: wished.restaurantId, name: wished.name, image: wished.image, cuisine: wished.cuisine, price: wished.price, address: wished.address };
+    return undefined;
+  }, [restaurantMeta, ratings, wishlist]);
+
+  // Ratings
+  const rateRestaurant = useCallback((rating: RestaurantRating) => {
+    // Capture previous-state context for the toast: was this restaurant
+    // already rated? Read from the closure ratings (committed state) since
+    // the setRatings updater below runs during render — by then it's too
+    // late to know the prior value.
+    const wasRated = ratings.some((r) => r.restaurantId === rating.restaurantId);
+    setRatings((prev) => {
+      // Save old rating to visit history before overwriting. Writes to
+      // BOTH localStorage (synchronous, always works) and Supabase
+      // (async, cross-device) so visit records persist regardless of
+      // sign-in status or network state.
+      const existing = prev.find((r) => r.restaurantId === rating.restaurantId);
+      if (existing) {
+        appendLocalVisitRecord(existing.restaurantId, {
+          score: existing.score,
+          notes: existing.notes,
+          visit_date: existing.visitDate,
+          tags: existing.tags,
+          would_return: existing.wouldReturn,
+          photos: (existing.photos || []).map((p) => ({
+            url: p.url,
+            caption: p.caption || '',
+            isFavorite: !!p.isFavorite,
+          })),
+          friend_ids: existing.friendIds || [],
+        });
+        if (userIdRef.current) {
+          saveVisitRecord(userIdRef.current, {
+            restaurantId: existing.restaurantId,
+            score: existing.score,
+            notes: existing.notes,
+            visitDate: existing.visitDate,
+            tags: existing.tags,
+            wouldReturn: existing.wouldReturn,
+            photos: existing.photos || [],
+            friendIds: existing.friendIds || [],
+          }).catch(() => console.warn('[VisitHistory] Failed to save visit record'));
+        }
+      }
+      const next = [rating, ...prev.filter((r) => r.restaurantId !== rating.restaurantId)];
+      saveToStorage(STORAGE_KEY_RATINGS, next);
+      syncRatingsToCloud(next);
+      return next;
+    });
+    // Update lists to include this restaurant in selected lists
+    if (rating.listIds && rating.listIds.length > 0) {
+      setLists((prev) => {
+        const next = prev.map((l) => {
+          if (rating.listIds.includes(l.id) && !l.restaurantIds.includes(rating.restaurantId)) {
+            return { ...l, restaurantIds: [...l.restaurantIds, rating.restaurantId] };
+          }
+          if (!rating.listIds.includes(l.id) && l.restaurantIds.includes(rating.restaurantId)) {
+            return { ...l, restaurantIds: l.restaurantIds.filter((r) => r !== rating.restaurantId) };
+          }
+          return l;
+        });
+        saveToStorage(STORAGE_KEY_LISTS, next);
+        syncListsToCloud(next);
+        return next;
+      });
+    }
+    cacheRestaurantMeta({ id: rating.restaurantId, name: rating.name, image: rating.image, cuisine: rating.cuisine, price: rating.price, address: rating.address });
+    // Add new ratings to top of custom order
+    setCustomOrderState((prev) => {
+      if (prev.includes(rating.restaurantId)) return prev;
+      const next = [rating.restaurantId, ...prev];
+      saveToStorage(STORAGE_KEY_CUSTOM_ORDER, next);
+      return next;
+    });
+    // Publish to community
+    if (userIdRef.current) {
+      publishCommunityRating(userIdRef.current, rating.restaurantId, {
+        name: rating.name, score: rating.score, notes: rating.notes,
+        cuisine: rating.cuisine, price: rating.price, address: rating.address,
+        visitDate: rating.visitDate, tags: rating.tags, wouldReturn: rating.wouldReturn,
+        friendIds: rating.friendIds || [], photoUrl: rating.image || '',
+      });
+      // Only publish photos to community if account is public
+      if (rating.photos && rating.photos.length > 0 && isPublicRef.current) {
+        publishCommunityPhotos(userIdRef.current, rating.restaurantId, rating.photos).catch(() => {
+          console.warn('[Supabase] Failed to publish photos — they may be too large for the database');
+        });
+      }
+    }
+    showToast(
+      wasRated ? 'Rating updated' : 'Added to rated restaurants',
+      {
+        subtitle: `${rating.name} · ${rating.score.toFixed(1)} / 10`,
+        variant: wasRated ? 'rating-updated' : 'rated',
+      },
+    );
+  }, [ratings, cacheRestaurantMeta, syncRatingsToCloud, syncListsToCloud, showToast]);
+
+  const updateRating = useCallback((restaurantId: string, partial: Partial<RestaurantRating>) => {
+    setRatings((prev) => {
+      const next = prev.map((r) => r.restaurantId === restaurantId ? { ...r, ...partial } : r);
+      saveToStorage(STORAGE_KEY_RATINGS, next);
+      syncRatingsToCloud(next);
+      return next;
+    });
+  }, [syncRatingsToCloud]);
+
+  const removeRating = useCallback((restaurantId: string) => {
+    setRatings((prev) => {
+      const next = prev.filter((r) => r.restaurantId !== restaurantId);
+      saveToStorage(STORAGE_KEY_RATINGS, next);
+      syncRatingsToCloud(next);
+      return next;
+    });
+    setCustomOrderState((prev) => {
+      const next = prev.filter((id) => id !== restaurantId);
+      saveToStorage(STORAGE_KEY_CUSTOM_ORDER, next);
+      return next;
+    });
+    if (userIdRef.current) {
+      removeCommunityRating(userIdRef.current, restaurantId);
+      removeCommunityPhotos(userIdRef.current, restaurantId);
+    }
+  }, [syncRatingsToCloud]);
+
+  const getRating = useCallback((restaurantId: string) => ratings.find((r) => r.restaurantId === restaurantId), [ratings]);
+
+  // Delete a single visit from the timeline. The timeline lists the
+  // current (active) rating alongside historical records; the id
+  // 'current' targets the active rating. Deleting the active visit
+  // promotes the newest remaining visit back to being the current
+  // rating so the user's most recent kept visit stays on the card.
+  const deleteVisit = useCallback(async (restaurantId: string, visitId: string) => {
+    if (visitId === 'current') {
+      // Find the newest remaining historical visit from both local
+      // storage and Supabase, and promote it.
+      const localRecs = readLocalVisitHistory(restaurantId);
+      let remoteRecs: any[] = [];
+      if (userIdRef.current) {
+        try { remoteRecs = await getVisitHistory(userIdRef.current, restaurantId); } catch {}
+      }
+      const byId = new Map<string, any>();
+      for (const r of [...localRecs, ...remoteRecs]) byId.set(r.id, r);
+      const sorted = Array.from(byId.values()).sort((a, b) => {
+        const ad = a.visit_date || a.created_at || '';
+        const bd = b.visit_date || b.created_at || '';
+        return bd.localeCompare(ad);
+      });
+      const promote = sorted[0];
+      if (!promote) {
+        // No other visits — remove the rating entirely.
+        removeRating(restaurantId);
+        return;
+      }
+      // Pull the promoted record OUT of history (both stores) so it
+      // doesn't appear twice once it becomes the active rating.
+      removeLocalVisitRecord(restaurantId, promote.id);
+      if (userIdRef.current && !String(promote.id).startsWith('local-')) {
+        deleteVisitRecord(userIdRef.current, promote.id).catch(() => {});
+      }
+      // Rewrite the current rating using the promoted visit's data,
+      // keeping the restaurant metadata from the active rating so
+      // fields like address / cuisine / lists are preserved.
+      let promotedForPublish: RestaurantRating | null = null;
+      setRatings((prev) => {
+        const existing = prev.find((r) => r.restaurantId === restaurantId);
+        if (!existing) return prev;
+        const promoted: RestaurantRating = {
+          ...existing,
+          score: Number(promote.score),
+          notes: promote.notes || '',
+          visitDate: promote.visit_date || '',
+          tags: promote.tags || [],
+          wouldReturn: promote.would_return !== undefined ? !!promote.would_return : existing.wouldReturn,
+          photos: promote.photos || [],
+          friendIds: promote.friend_ids || [],
+          createdAt: Date.now(),
+        };
+        promotedForPublish = promoted;
+        const next = [promoted, ...prev.filter((r) => r.restaurantId !== restaurantId)];
+        saveToStorage(STORAGE_KEY_RATINGS, next);
+        syncRatingsToCloud(next);
+        return next;
+      });
+      // Keep the community-published row in sync with the promoted data.
+      if (userIdRef.current && promotedForPublish) {
+        const p = promotedForPublish;
+        publishCommunityRating(userIdRef.current, restaurantId, {
+          name: p.name,
+          score: p.score,
+          notes: p.notes,
+          cuisine: p.cuisine,
+          price: p.price,
+          address: p.address,
+          visitDate: p.visitDate,
+          tags: p.tags,
+          wouldReturn: p.wouldReturn,
+          friendIds: p.friendIds || [],
+          photoUrl: p.image || '',
+        });
+      }
+      return;
+    }
+
+    // Historical visit — just drop it from both stores.
+    removeLocalVisitRecord(restaurantId, visitId);
+    if (userIdRef.current && !String(visitId).startsWith('local-')) {
+      deleteVisitRecord(userIdRef.current, visitId).catch(() => {});
+    }
+    // Bump the fingerprint trigger so useRestaurantDetail refetches.
+    setRatings((prev) => {
+      const existing = prev.find((r) => r.restaurantId === restaurantId);
+      if (!existing) return prev;
+      const next = prev.map((r) => r.restaurantId === restaurantId
+        ? { ...r, createdAt: Date.now() }
+        : r);
+      saveToStorage(STORAGE_KEY_RATINGS, next);
+      syncRatingsToCloud(next);
+      return next;
+    });
+  }, [removeRating, syncRatingsToCloud]);
+
+  // Lists
+  const createList = useCallback((name: string, emoji: string, type?: CustomList['type']) => {
+    setLists((prev) => {
+      const next = [...prev, { id: `list-${Date.now()}`, name, emoji, ...(type ? { type } : {}), restaurantIds: [], wishlistIds: [], createdAt: Date.now() }];
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+  }, [syncListsToCloud]);
+
+  const deleteList = useCallback((id: string) => {
+    setLists((prev) => {
+      const next = prev.filter((l) => l.id !== id);
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+  }, [syncListsToCloud]);
+
+  const renameList = useCallback((id: string, name: string, emoji: string) => {
+    setLists((prev) => {
+      const next = prev.map((l) => l.id === id ? { ...l, name, emoji } : l);
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+  }, [syncListsToCloud]);
+
+  const addToList = useCallback((listId: string, restaurantId: string) => {
+    setLists((prev) => {
+      const next = prev.map((l) => l.id === listId && !l.restaurantIds.includes(restaurantId)
+        ? { ...l, restaurantIds: [...l.restaurantIds, restaurantId] }
+        : l);
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+    // Keep the rating's listIds in sync so the load-time reconciliation
+    // doesn't fight against local changes.
+    setRatings((prev) => {
+      let changed = false;
+      const next = prev.map((r) => {
+        if (r.restaurantId === restaurantId && !r.listIds.includes(listId)) {
+          changed = true;
+          return { ...r, listIds: [...r.listIds, listId] };
+        }
+        return r;
+      });
+      if (!changed) return prev;
+      saveToStorage(STORAGE_KEY_RATINGS, next);
+      syncRatingsToCloud(next);
+      return next;
+    });
+  }, [syncListsToCloud, syncRatingsToCloud]);
+
+  const removeFromList = useCallback((listId: string, restaurantId: string) => {
+    setLists((prev) => {
+      const next = prev.map((l) => l.id === listId
+        ? { ...l, restaurantIds: l.restaurantIds.filter((r) => r !== restaurantId) }
+        : l);
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+    // Also strip the listId from the rating so it doesn't get re-added by
+    // the load-time reconciliation in loadFromSupabase.
+    setRatings((prev) => {
+      let changed = false;
+      const next = prev.map((r) => {
+        if (r.restaurantId === restaurantId && r.listIds.includes(listId)) {
+          changed = true;
+          return { ...r, listIds: r.listIds.filter((id) => id !== listId) };
+        }
+        return r;
+      });
+      if (!changed) return prev;
+      saveToStorage(STORAGE_KEY_RATINGS, next);
+      syncRatingsToCloud(next);
+      return next;
+    });
+  }, [syncListsToCloud, syncRatingsToCloud]);
+
+  const addToWishlistInList = useCallback((listId: string, restaurantId: string) => {
+    setLists((prev) => {
+      const next = prev.map((l) => l.id === listId && !l.wishlistIds.includes(restaurantId)
+        ? { ...l, wishlistIds: [...l.wishlistIds, restaurantId] }
+        : l);
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+    setWishlist((prev) => {
+      let changed = false;
+      const next = prev.map((w) => {
+        if (w.restaurantId === restaurantId && !w.listIds.includes(listId)) {
+          changed = true;
+          return { ...w, listIds: [...w.listIds, listId] };
+        }
+        return w;
+      });
+      if (!changed) return prev;
+      saveToStorage(STORAGE_KEY_WISHLIST, next);
+      syncWishlistToCloud(next);
+      return next;
+    });
+  }, [syncListsToCloud, syncWishlistToCloud]);
+
+  const removeFromWishlistInList = useCallback((listId: string, restaurantId: string) => {
+    setLists((prev) => {
+      const next = prev.map((l) => l.id === listId
+        ? { ...l, wishlistIds: l.wishlistIds.filter((r) => r !== restaurantId) }
+        : l);
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+    setWishlist((prev) => {
+      let changed = false;
+      const next = prev.map((w) => {
+        if (w.restaurantId === restaurantId && w.listIds.includes(listId)) {
+          changed = true;
+          return { ...w, listIds: w.listIds.filter((id) => id !== listId) };
+        }
+        return w;
+      });
+      if (!changed) return prev;
+      saveToStorage(STORAGE_KEY_WISHLIST, next);
+      syncWishlistToCloud(next);
+      return next;
+    });
+  }, [syncListsToCloud, syncWishlistToCloud]);
+
+  const getListsForRestaurant = useCallback((restaurantId: string) => lists.filter((l) => l.restaurantIds.includes(restaurantId)), [lists]);
+
+  const setListRating = useCallback((listId: string, rating: RestaurantRating) => {
+    setLists((prev) => {
+      const next = prev.map((l) => {
+        if (l.id !== listId) return l;
+        const listRatings = { ...(l.listRatings || {}), [rating.restaurantId]: rating };
+        const restaurantIds = l.restaurantIds.includes(rating.restaurantId) ? l.restaurantIds : [...l.restaurantIds, rating.restaurantId];
+        return { ...l, listRatings, restaurantIds };
+      });
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+    cacheRestaurantMeta({ id: rating.restaurantId, name: rating.name, image: rating.image, cuisine: rating.cuisine, price: rating.price, address: rating.address });
+  }, [syncListsToCloud, cacheRestaurantMeta]);
+
+  const getListRating = useCallback((listId: string, restaurantId: string): RestaurantRating | undefined => {
+    const list = lists.find((l) => l.id === listId);
+    return list?.listRatings?.[restaurantId];
+  }, [lists]);
+
+  // Wishlist
+  const addToWishlist = useCallback((item: WishlistItem) => {
+    setWishlist((prev) => {
+      const existing = prev.find((w) => w.restaurantId === item.restaurantId);
+      const next = existing
+        ? prev.map((w) => w.restaurantId === item.restaurantId ? item : w)
+        : [item, ...prev];
+      saveToStorage(STORAGE_KEY_WISHLIST, next);
+      syncWishlistToCloud(next);
+      return next;
+    });
+    if (item.listIds && item.listIds.length > 0) {
+      setLists((prev) => {
+        const next = prev.map((l) => {
+          if (item.listIds.includes(l.id) && !l.wishlistIds.includes(item.restaurantId)) {
+            return { ...l, wishlistIds: [...l.wishlistIds, item.restaurantId] };
+          }
+          if (!item.listIds.includes(l.id) && l.wishlistIds.includes(item.restaurantId)) {
+            return { ...l, wishlistIds: l.wishlistIds.filter((r) => r !== item.restaurantId) };
+          }
+          return l;
+        });
+        saveToStorage(STORAGE_KEY_LISTS, next);
+        syncListsToCloud(next);
+        return next;
+      });
+    }
+    cacheRestaurantMeta({ id: item.restaurantId, name: item.name, image: item.image, cuisine: item.cuisine, price: item.price, address: item.address });
+  }, [cacheRestaurantMeta, syncWishlistToCloud, syncListsToCloud]);
+
+  const removeFromWishlist = useCallback((restaurantId: string) => {
+    setWishlist((prev) => {
+      const next = prev.filter((w) => w.restaurantId !== restaurantId);
+      saveToStorage(STORAGE_KEY_WISHLIST, next);
+      syncWishlistToCloud(next);
+      return next;
+    });
+    setLists((prev) => {
+      const next = prev.map((l) => l.wishlistIds.includes(restaurantId)
+        ? { ...l, wishlistIds: l.wishlistIds.filter((r) => r !== restaurantId) }
+        : l);
+      saveToStorage(STORAGE_KEY_LISTS, next);
+      syncListsToCloud(next);
+      return next;
+    });
+  }, [syncWishlistToCloud, syncListsToCloud]);
+
+  const isWishlisted = useCallback((restaurantId: string) => wishlist.some((w) => w.restaurantId === restaurantId), [wishlist]);
+
+  const getWishlistItem = useCallback((restaurantId: string) => wishlist.find((w) => w.restaurantId === restaurantId), [wishlist]);
+
+  // One-tap toggle. Decides add-vs-remove from the currently committed
+  // wishlist (closure value) so the toast we fire below sees the right
+  // direction — the setWishlist updater runs during render, AFTER this
+  // function returns, so reading from inside it left `removed` always
+  // false and the toast always read "Added".
+  const toggleWishlist = useCallback((restaurant: RestaurantMeta) => {
+    cacheRestaurantMeta(restaurant);
+    const isOn = wishlist.some((w) => w.restaurantId === restaurant.id);
+    setWishlist((prev) => {
+      // Re-check inside the updater so two fast taps still produce the
+      // right end state — prev is the most up-to-date queue value.
+      const onNow = prev.some((w) => w.restaurantId === restaurant.id);
+      const next: WishlistItem[] = onNow
+        ? prev.filter((w) => w.restaurantId !== restaurant.id)
+        : [{
+            restaurantId: restaurant.id,
+            name: restaurant.name,
+            image: safeImage(restaurant.image),
+            cuisine: restaurant.cuisine,
+            price: restaurant.price,
+            address: restaurant.address,
+            notes: '',
+            listIds: [],
+            addedAt: Date.now(),
+          }, ...prev];
+      saveToStorage(STORAGE_KEY_WISHLIST, next);
+      syncWishlistToCloud(next);
+      return next;
+    });
+    // When removing, also strip the restaurant from any custom list that
+    // had it on its wishlistIds so the lists view doesn't show a ghost.
+    if (isOn) {
+      setLists((prev) => {
+        let changed = false;
+        const next = prev.map((l) => {
+          if (l.wishlistIds.includes(restaurant.id)) {
+            changed = true;
+            return { ...l, wishlistIds: l.wishlistIds.filter((r) => r !== restaurant.id) };
+          }
+          return l;
+        });
+        if (!changed) return prev;
+        saveToStorage(STORAGE_KEY_LISTS, next);
+        syncListsToCloud(next);
+        return next;
+      });
+    }
+    showToast(isOn ? 'Removed from wishlist' : 'Added to wishlist', {
+      subtitle: restaurant.name,
+      variant: isOn ? 'wishlist-remove' : 'wishlist-add',
+    });
+  }, [wishlist, cacheRestaurantMeta, syncWishlistToCloud, syncListsToCloud, showToast]);
+
+  // Modals
+  const openRatingModal = useCallback((restaurant: RestaurantMeta) => {
+    cacheRestaurantMeta(restaurant);
+    setRatingModalRestaurant(restaurant);
+    setRatingModalOpen(true);
+  }, [cacheRestaurantMeta]);
+  const closeRatingModal = useCallback(() => { setRatingModalOpen(false); setRatingModalRestaurant(null); }, []);
+
+  const openAddToListModal = useCallback((restaurantId: string, meta?: RestaurantMeta) => {
+    if (meta) cacheRestaurantMeta(meta);
+    setAddToListRestaurantId(restaurantId);
+    setAddToListModalOpen(true);
+  }, [cacheRestaurantMeta]);
+  const closeAddToListModal = useCallback(() => { setAddToListModalOpen(false); setAddToListRestaurantId(null); }, []);
+
+  const openAddRestaurantModal = useCallback((restaurant: RestaurantMeta, initialPage?: string) => {
+    cacheRestaurantMeta(restaurant);
+    setAddRestaurantModalMeta(restaurant);
+    setAddRestaurantModalInitialPage(initialPage || null);
+    setAddRestaurantModalOpen(true);
+  }, [cacheRestaurantMeta]);
+  const closeAddRestaurantModal = useCallback(() => { setAddRestaurantModalOpen(false); setAddRestaurantModalMeta(null); setAddRestaurantModalInitialPage(null); }, []);
+
+  const openHomeMealModal = useCallback((meal?: HomeMeal) => {
+    setHomeMealModalData(meal || null);
+    setHomeMealModalOpen(true);
+  }, []);
+  const closeHomeMealModal = useCallback(() => { setHomeMealModalOpen(false); setHomeMealModalData(null); }, []);
+
+  return (
+    <ListsContext.Provider value={{
+      ratings, rateRestaurant, updateRating, removeRating, getRating, deleteVisit,
+      lists, createList, deleteList, renameList, addToList, removeFromList, addToWishlistInList, removeFromWishlistInList, getListsForRestaurant, setListRating, getListRating,
+      restaurantMeta, cacheRestaurantMeta, getRestaurantInfo, stashMetaKey,
+      wishlist, addToWishlist, removeFromWishlist, toggleWishlist, isWishlisted, getWishlistItem,
+      ratingModalOpen, ratingModalRestaurant, openRatingModal, closeRatingModal,
+      addToListModalOpen, addToListRestaurantId, openAddToListModal, closeAddToListModal,
+      addRestaurantModalOpen, addRestaurantModalMeta, addRestaurantModalInitialPage, openAddRestaurantModal, closeAddRestaurantModal,
+      addRecipe, updateRecipe, removeRecipe, getRecipes,
+      addRecipeModalOpen, addRecipeModalListId, addRecipeModalRecipe, openAddRecipeModal, closeAddRecipeModal,
+      trips, createTrip, updateTrip, deleteTrip, addRestaurantToTrip, updateTripRestaurant, removeRestaurantFromTrip, addHotelToTrip, updateHotel, removeHotelFromTrip,
+      customOrder, setCustomOrder,
+      homeMeals, createHomeMeal, createHomeMealsBulk, updateHomeMeal, deleteHomeMeal, getHomeMeal,
+      homeMealModalOpen, homeMealModalData, openHomeMealModal, closeHomeMealModal,
+    }}>
+      {children}
+    </ListsContext.Provider>
+  );
+};
+
+export function useLists() {
+  const ctx = useContext(ListsContext);
+  if (!ctx) throw new Error('useLists must be used within ListsProvider');
+  return ctx;
+}

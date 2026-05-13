@@ -1,0 +1,1153 @@
+/**
+ * Community ratings & photos — shared data across all users.
+ */
+import { supabase, supabaseConfigured } from './supabase';
+import type { HomeMeal } from '../contexts/ListsContext';
+
+export interface CommunityRating {
+  id: string;
+  user_id: string;
+  restaurant_id: string;
+  restaurant_name: string;
+  score: number;
+  notes: string;
+  cuisine: string;
+  price: string;
+  address: string;
+  visit_date: string;
+  tags: string[];
+  would_return: boolean;
+  friend_ids: string[];
+  lat: number | null;
+  lng: number | null;
+  photo_url: string;
+  created_at: string;
+}
+
+export interface CommunityPhoto {
+  id: string;
+  user_id: string;
+  restaurant_id: string;
+  url: string;
+  caption: string;
+  is_favorite: boolean;
+  created_at: string;
+}
+
+export interface CommunityStats {
+  avgScore: number;
+  totalRatings: number;
+  ratings: CommunityRating[];
+}
+
+export interface FriendsStats {
+  avgScore: number;
+  totalRatings: number;
+  ratings: CommunityRating[];
+}
+
+/**
+ * Publish a user's rating to the community table (called when user rates a restaurant).
+ */
+export async function publishCommunityRating(
+  userId: string,
+  restaurantId: string,
+  data: { name: string; score: number; notes: string; cuisine: string; price: string; address: string; visitDate: string; tags: string[]; wouldReturn: boolean; friendIds?: string[]; lat?: number; lng?: number; photoUrl?: string }
+): Promise<boolean> {
+  if (!supabaseConfigured || !userId) return false;
+  try {
+    const payload: any = {
+      user_id: userId,
+      restaurant_id: restaurantId,
+      restaurant_name: data.name,
+      score: data.score,
+      notes: data.notes,
+      cuisine: data.cuisine,
+      price: data.price,
+      address: data.address,
+      visit_date: data.visitDate,
+      tags: data.tags,
+      would_return: data.wouldReturn,
+      friend_ids: data.friendIds || [],
+      updated_at: new Date().toISOString(),
+    };
+    if (data.lat != null) payload.lat = data.lat;
+    if (data.lng != null) payload.lng = data.lng;
+    if (data.photoUrl) payload.photo_url = data.photoUrl;
+    const { error } = await supabase.from('community_ratings').upsert(payload, { onConflict: 'user_id,restaurant_id' });
+    if (error) { console.error('[Community] publishRating error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[Community] publishRating exception:', err); return false; }
+}
+
+/**
+ * Remove a user's community rating (when they delete their rating).
+ */
+export async function removeCommunityRating(userId: string, restaurantId: string): Promise<boolean> {
+  if (!supabaseConfigured || !userId) return false;
+  try {
+    const { error } = await supabase.from('community_ratings')
+      .delete().eq('user_id', userId).eq('restaurant_id', restaurantId);
+    if (error) { console.error('[Community] removeRating error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[Community] removeRating exception:', err); return false; }
+}
+
+/**
+ * Get community stats for a restaurant (all users' ratings).
+ */
+export async function getCommunityStats(restaurantId: string): Promise<CommunityStats> {
+  if (!supabaseConfigured) return { avgScore: 0, totalRatings: 0, ratings: [] };
+  try {
+    const { data, error } = await supabase.from('community_ratings')
+      .select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: false });
+    if (error) { console.error('[Community] getStats error:', error); return { avgScore: 0, totalRatings: 0, ratings: [] }; }
+    const ratings = (data || []) as CommunityRating[];
+    const avgScore = ratings.length > 0 ? ratings.reduce((sum, r) => sum + Number(r.score), 0) / ratings.length : 0;
+    return { avgScore, totalRatings: ratings.length, ratings };
+  } catch (err) { console.error('[Community] getStats exception:', err); return { avgScore: 0, totalRatings: 0, ratings: [] }; }
+}
+
+/**
+ * Get friends' ratings for a restaurant.
+ */
+export async function getFriendsStats(userId: string, restaurantId: string): Promise<FriendsStats> {
+  if (!supabaseConfigured || !userId) return { avgScore: 0, totalRatings: 0, ratings: [] };
+  try {
+    // Get friend IDs
+    const { data: friends } = await supabase.from('user_friends')
+      .select('friend_id').eq('user_id', userId);
+    const friendIds = (friends || []).map((f: any) => f.friend_id);
+    if (friendIds.length === 0) return { avgScore: 0, totalRatings: 0, ratings: [] };
+
+    // Get friends' ratings for this restaurant
+    const { data, error } = await supabase.from('community_ratings')
+      .select('*').eq('restaurant_id', restaurantId).in('user_id', friendIds)
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[Community] getFriendsStats error:', error); return { avgScore: 0, totalRatings: 0, ratings: [] }; }
+    const ratings = (data || []) as CommunityRating[];
+    const avgScore = ratings.length > 0 ? ratings.reduce((sum, r) => sum + Number(r.score), 0) / ratings.length : 0;
+    return { avgScore, totalRatings: ratings.length, ratings };
+  } catch (err) { console.error('[Community] getFriendsStats exception:', err); return { avgScore: 0, totalRatings: 0, ratings: [] }; }
+}
+
+/**
+ * Remove a user's community photos for a restaurant.
+ */
+export async function removeCommunityPhotos(userId: string, restaurantId: string): Promise<boolean> {
+  if (!supabaseConfigured || !userId) return false;
+  try {
+    await supabase.from('community_photos').delete().eq('user_id', userId).eq('restaurant_id', restaurantId);
+    return true;
+  } catch { return false; }
+}
+
+/**
+ * Publish user photos to the community gallery.
+ */
+export async function publishCommunityPhotos(
+  userId: string, restaurantId: string, photos: { url: string; caption: string; isFavorite: boolean }[]
+): Promise<boolean> {
+  if (!supabaseConfigured || !userId || photos.length === 0) return false;
+  try {
+    // Remove existing photos for this user+restaurant first
+    await supabase.from('community_photos').delete().eq('user_id', userId).eq('restaurant_id', restaurantId);
+    // Insert new ones
+    const rows = photos.map((p) => ({
+      user_id: userId, restaurant_id: restaurantId,
+      url: p.url, caption: p.caption, is_favorite: p.isFavorite,
+    }));
+    const { error } = await supabase.from('community_photos').insert(rows);
+    if (error) { console.error('[Community] publishPhotos error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[Community] publishPhotos exception:', err); return false; }
+}
+
+/**
+ * Get community photos for a restaurant.
+ */
+export async function getCommunityPhotos(restaurantId: string): Promise<CommunityPhoto[]> {
+  if (!supabaseConfigured) return [];
+  try {
+    const { data, error } = await supabase.from('community_photos')
+      .select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: false });
+    if (error) { console.error('[Community] getPhotos error:', error); return []; }
+    return (data || []) as CommunityPhoto[];
+  } catch (err) { console.error('[Community] getPhotos exception:', err); return []; }
+}
+
+/**
+ * Pick a single "cover" photo for a batch of restaurants in one query.
+ * Returns a map of restaurant_id → photo URL with this priority (highest
+ * wins):
+ *   1. A photo uploaded by the current viewer themselves — most recent first.
+ *   2. Any user's photo flagged is_favorite — most recent first.
+ *   3. The first (oldest) photo uploaded by anyone.
+ *
+ * Restaurants with no community photos at all are absent from the result
+ * so callers can fall back to the "No photos yet" placeholder.
+ */
+export async function getCoverPhotosBatch(
+  restaurantIds: string[],
+  currentUserId: string | null,
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  if (!supabaseConfigured || restaurantIds.length === 0) return out;
+  try {
+    // community_photos is world-readable, so we can fetch every photo for
+    // every restaurant in one query and pick a winner per bucket in JS.
+    const { data, error } = await supabase
+      .from('community_photos')
+      .select('restaurant_id, user_id, url, is_favorite, created_at')
+      .in('restaurant_id', restaurantIds);
+    if (error || !data) return out;
+
+    const buckets: Record<string, any[]> = {};
+    for (const row of data as any[]) {
+      const id = row.restaurant_id as string;
+      if (!buckets[id]) buckets[id] = [];
+      buckets[id].push(row);
+    }
+    for (const [id, rows] of Object.entries(buckets)) {
+      if (rows.length === 0) continue;
+      const mine = currentUserId
+        ? rows.filter((r) => r.user_id === currentUserId)
+        : [];
+      if (mine.length > 0) {
+        mine.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        out[id] = mine[0].url;
+        continue;
+      }
+      const favorites = rows.filter((r) => r.is_favorite);
+      if (favorites.length > 0) {
+        favorites.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        out[id] = favorites[0].url;
+        continue;
+      }
+      const oldest = [...rows].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      );
+      out[id] = oldest[0].url;
+    }
+    return out;
+  } catch (err) {
+    console.warn('[Community] getCoverPhotosBatch error:', err);
+    return out;
+  }
+}
+
+/* ── User Profiles ── */
+
+export interface UserProfile {
+  user_id: string;
+  display_name: string;
+  username: string;
+  bio: string;
+  is_public: boolean;
+  is_expert: boolean;
+  /** Self-declared home base — surfaced on the Circle search page so
+   *  users can tell where an expert eats, and used by /location to find
+   *  experts based in the city being explored. Optional for non-experts;
+   *  expert profile editing nudges experts to provide it. */
+  home_city?: string | null;
+  home_lat?: number | null;
+  home_lng?: number | null;
+}
+
+/** Optional home-base extras for {@link saveProfile}. Pass any subset; only
+ *  fields with explicit values get written, so callers can leave the
+ *  others alone instead of wiping them by accident. */
+export interface SaveProfileHomeBase {
+  homeCity?: string | null;
+  homeLat?: number | null;
+  homeLng?: number | null;
+}
+
+export async function getProfile(userId: string): Promise<UserProfile | null> {
+  if (!supabaseConfigured || !userId) return null;
+  try {
+    const { data, error } = await supabase.from('user_profiles')
+      .select('*').eq('user_id', userId).single();
+    if (error) return null;
+    return data as UserProfile;
+  } catch { return null; }
+}
+
+export async function getProfileByUsername(username: string): Promise<UserProfile | null> {
+  if (!supabaseConfigured || !username.trim()) return null;
+  try {
+    const { data, error } = await supabase.from('user_profiles')
+      .select('*').ilike('username', username.trim()).single();
+    if (error) return null;
+    return data as UserProfile;
+  } catch { return null; }
+}
+
+export async function saveProfile(
+  userId: string,
+  displayName: string,
+  username: string,
+  bio?: string,
+  isPublic?: boolean,
+  isExpert?: boolean,
+  homeBase?: SaveProfileHomeBase,
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabaseConfigured || !userId) return { success: false, error: 'Not configured' };
+  try {
+    const payload: any = {
+      user_id: userId, display_name: displayName, username: username.toLowerCase().trim(),
+      updated_at: new Date().toISOString(),
+    };
+    if (bio !== undefined) payload.bio = bio;
+    if (isPublic !== undefined) payload.is_public = isPublic;
+    if (isExpert !== undefined) payload.is_expert = isExpert;
+    if (homeBase) {
+      // Only assign keys that were explicitly provided so partial updates
+      // don't clobber existing home-base values with undefined.
+      if (homeBase.homeCity !== undefined) payload.home_city = homeBase.homeCity;
+      if (homeBase.homeLat !== undefined) payload.home_lat = homeBase.homeLat;
+      if (homeBase.homeLng !== undefined) payload.home_lng = homeBase.homeLng;
+    }
+    const { error } = await supabase.from('user_profiles').upsert(payload, { onConflict: 'user_id' });
+    if (error) {
+      if (error.code === '23505') return { success: false, error: 'Username is already taken' };
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err) { return { success: false, error: String(err) }; }
+}
+
+/**
+ * Fetch profiles whose declared home base sits within a lat/lng bounding
+ * box. Used by /location to surface "experts in this area" /
+ * "people in this area you might know" suggestion rows. Filters server-side
+ * on (home_lat, home_lng) so we don't pull every profile across the wire.
+ *
+ * - `expertsOnly: true` narrows to is_expert profiles.
+ * - `excludeUserIds` keeps the caller out of their own results and is
+ *   also where you'd skip already-followed accounts.
+ * - `limit` defaults to 20 so a single bbox query still pages cheaply.
+ */
+export async function getProfilesInArea(opts: {
+  bbox: { latLow: number; latHigh: number; lngLow: number; lngHigh: number };
+  expertsOnly?: boolean;
+  excludeUserIds?: string[];
+  limit?: number;
+}): Promise<UserProfile[]> {
+  if (!supabaseConfigured) return [];
+  const { bbox, expertsOnly, excludeUserIds, limit } = opts;
+  try {
+    let q = supabase
+      .from('user_profiles')
+      .select('*')
+      .gte('home_lat', bbox.latLow)
+      .lte('home_lat', bbox.latHigh)
+      .gte('home_lng', bbox.lngLow)
+      .lte('home_lng', bbox.lngHigh)
+      .limit(limit ?? 20);
+    if (expertsOnly) q = q.eq('is_expert', true);
+    if (excludeUserIds && excludeUserIds.length > 0) {
+      // Postgrest doesn't accept .not('user_id', 'in', '(...)') with an
+      // array directly in the JS client builder, so format manually.
+      q = q.not('user_id', 'in', `(${excludeUserIds.map((id) => `"${id}"`).join(',')})`);
+    }
+    const { data, error } = await q;
+    if (error) return [];
+    return (data || []) as UserProfile[];
+  } catch { return []; }
+}
+
+export async function searchUsersByUsername(query: string, currentUserId: string): Promise<UserProfile[]> {
+  if (!supabaseConfigured) return [];
+  try {
+    let q = supabase.from('user_profiles').select('*').neq('user_id', currentUserId).limit(20);
+    if (query.trim()) {
+      const escaped = query.trim().replace(/[%_\\]/g, '\\$&');
+      q = q.ilike('username', `%${escaped}%`);
+    }
+    const { data, error } = await q;
+    if (error) return [];
+    return (data || []) as UserProfile[];
+  } catch { return []; }
+}
+
+export async function getProfilesByIds(userIds: string[]): Promise<Record<string, UserProfile>> {
+  if (!supabaseConfigured || userIds.length === 0) return {};
+  try {
+    const { data, error } = await supabase.from('user_profiles')
+      .select('*').in('user_id', userIds);
+    if (error) return {};
+    const map: Record<string, UserProfile> = {};
+    (data || []).forEach((p: any) => { map[p.user_id] = p as UserProfile; });
+    return map;
+  } catch { return {}; }
+}
+
+/** Check if currentUser can view targetUser's profile */
+export async function canViewProfile(currentUserId: string, targetProfile: UserProfile): Promise<boolean> {
+  if (targetProfile.is_public) return true;
+  if (currentUserId === targetProfile.user_id) return true;
+  // Check mutual friendship
+  if (!supabaseConfigured) return false;
+  try {
+    const { data } = await supabase.from('user_friends')
+      .select('id').eq('user_id', currentUserId).eq('friend_id', targetProfile.user_id).eq('status', 'accepted').single();
+    return !!data;
+  } catch { return false; }
+}
+
+/** Follow a public account instantly (no request needed) */
+export async function followPublicAccount(userId: string, targetId: string): Promise<boolean> {
+  if (!supabaseConfigured || !userId || !targetId || userId === targetId) return false;
+  try {
+    const { error } = await supabase.from('user_friends')
+      .upsert({ user_id: userId, friend_id: targetId, status: 'accepted' }, { onConflict: 'user_id,friend_id' });
+    if (error) { console.error('[Friends] followPublic error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[Friends] followPublic exception:', err); return false; }
+}
+
+/** Get follower and following counts */
+export async function getFollowCounts(userId: string): Promise<{ followers: number; following: number }> {
+  if (!supabaseConfigured || !userId) return { followers: 0, following: 0 };
+  try {
+    const [{ count: following }, { count: followers }] = await Promise.all([
+      supabase.from('user_friends').select('*', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'accepted'),
+      supabase.from('user_friends').select('*', { count: 'exact', head: true }).eq('friend_id', userId).eq('status', 'accepted'),
+    ]);
+    return { followers: followers || 0, following: following || 0 };
+  } catch { return { followers: 0, following: 0 }; }
+}
+
+/** Get all ratings by a specific user */
+export async function getUserRatings(userId: string): Promise<CommunityRating[]> {
+  if (!supabaseConfigured || !userId) return [];
+  try {
+    const { data, error } = await supabase.from('community_ratings')
+      .select('*').eq('user_id', userId).order('updated_at', { ascending: false });
+    if (error) return [];
+    return (data || []) as CommunityRating[];
+  } catch { return []; }
+}
+
+/** Get all photos by a specific user */
+export async function getUserPhotos(userId: string): Promise<CommunityPhoto[]> {
+  if (!supabaseConfigured || !userId) return [];
+  try {
+    const { data, error } = await supabase.from('community_photos')
+      .select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    if (error) return [];
+    return (data || []) as CommunityPhoto[];
+  } catch { return []; }
+}
+
+/** Get a user's wishlist items from user_app_data */
+export async function getUserWishlist(userId: string): Promise<{ restaurantId: string; name: string; cuisine: string; price: string; address: string; notes: string }[]> {
+  if (!supabaseConfigured || !userId) return [];
+  try {
+    const { data, error } = await supabase.from('user_app_data')
+      .select('wishlist').eq('user_id', userId).single();
+    if (error || !data) return [];
+    return ((data.wishlist as any[]) || []).map((w: any) => ({
+      restaurantId: w.restaurantId, name: w.name, cuisine: w.cuisine || '',
+      price: w.price || '', address: w.address || '', notes: w.notes || '',
+    }));
+  } catch { return []; }
+}
+
+/** Get a user's lists from user_app_data (includes wishlist as first item) */
+export async function getUserLists(userId: string): Promise<{ id: string; name: string; emoji: string; restaurantIds: string[] }[]> {
+  if (!supabaseConfigured || !userId) return [];
+  try {
+    const { data, error } = await supabase.from('user_app_data')
+      .select('lists, wishlist').eq('user_id', userId).single();
+    if (error || !data) return [];
+
+    const result: { id: string; name: string; emoji: string; restaurantIds: string[] }[] = [];
+
+    // Wishlist always first
+    const wishlistItems = (data.wishlist as any[]) || [];
+    if (wishlistItems.length > 0) {
+      result.push({ id: '__wishlist__', name: 'Wishlist', emoji: '❤️', restaurantIds: wishlistItems.map((w: any) => w.restaurantId) });
+    }
+
+    // Then regular lists
+    const lists = (data.lists as any[]) || [];
+    lists.forEach((l: any) => {
+      result.push({ id: l.id, name: l.name, emoji: l.emoji, restaurantIds: l.restaurantIds || [] });
+    });
+
+    return result;
+  } catch { return []; }
+}
+
+/** Get ratings from experts (users with is_expert=true) */
+export async function getExpertRatings(limit = 50): Promise<CommunityRating[]> {
+  if (!supabaseConfigured) return [];
+  try {
+    // Get expert user IDs
+    const { data: experts } = await supabase.from('user_profiles').select('user_id').eq('is_expert', true);
+    if (!experts || experts.length === 0) return [];
+    const expertIds = experts.map((e: any) => e.user_id);
+    const { data, error } = await supabase.from('community_ratings')
+      .select('*').in('user_id', expertIds).order('updated_at', { ascending: false }).limit(limit);
+    if (error) return [];
+    return (data || []) as CommunityRating[];
+  } catch { return []; }
+}
+
+/**
+ * Every community rating authored by any user in `userIds`. Unlike
+ * `getExpertRatings` this has no recency cap — the global top-N
+ * ordering cuts off ratings for smaller cities, so the /location
+ * "Experts only" filter uses this to get the full set of ratings
+ * from the specific experts the user follows.
+ */
+export async function getRatingsByUserIds(userIds: string[]): Promise<CommunityRating[]> {
+  if (!supabaseConfigured || userIds.length === 0) return [];
+  try {
+    const { data, error } = await supabase
+      .from('community_ratings')
+      .select('*')
+      .in('user_id', userIds);
+    if (error) return [];
+    return (data || []) as CommunityRating[];
+  } catch { return []; }
+}
+
+/** Get all ratings from user's friends (for friends map), excluding experts */
+export async function getAllFriendRatings(userId: string): Promise<CommunityRating[]> {
+  if (!supabaseConfigured || !userId) return [];
+  try {
+    const friends = await getFriends(userId);
+    if (friends.length === 0) return [];
+    const friendIds = friends.map((f) => f.friend_id);
+
+    // Exclude expert users so their ratings only appear in the experts tab
+    const { data: experts } = await supabase.from('user_profiles').select('user_id').eq('is_expert', true);
+    const expertIds = new Set((experts || []).map((e: any) => e.user_id));
+    const nonExpertFriendIds = friendIds.filter((id) => !expertIds.has(id));
+    if (nonExpertFriendIds.length === 0) return [];
+
+    const { data, error } = await supabase.from('community_ratings')
+      .select('*').in('user_id', nonExpertFriendIds).order('updated_at', { ascending: false });
+    if (error) return [];
+    return (data || []) as CommunityRating[];
+  } catch { return []; }
+}
+
+/** Get ratings from everyone the user follows — friends AND experts.
+ *  The Following feed uses this so followed experts aren't hidden. */
+export async function getAllFollowedRatings(userId: string): Promise<CommunityRating[]> {
+  if (!supabaseConfigured || !userId) return [];
+  try {
+    const friends = await getFriends(userId);
+    if (friends.length === 0) return [];
+    const ids = friends.map((f) => f.friend_id);
+    const { data, error } = await supabase.from('community_ratings')
+      .select('*').in('user_id', ids).order('updated_at', { ascending: false });
+    if (error) { console.error('[Community] getAllFollowedRatings error:', error); return []; }
+    return (data || []) as CommunityRating[];
+  } catch (err) { console.error('[Community] getAllFollowedRatings exception:', err); return []; }
+}
+
+/* ── Likes & Comments ── */
+
+export interface ActivityComment {
+  id: string;
+  user_id: string;
+  rating_id: string;
+  text: string;
+  created_at: string;
+  profile?: UserProfile;
+}
+
+export async function toggleLike(userId: string, ratingId: string): Promise<boolean> {
+  if (!supabaseConfigured || !userId) return false;
+  try {
+    const { data } = await supabase.from('activity_likes')
+      .select('id').eq('user_id', userId).eq('rating_id', ratingId).single();
+    if (data) {
+      await supabase.from('activity_likes').delete().eq('id', data.id);
+    } else {
+      await supabase.from('activity_likes').insert({ user_id: userId, rating_id: ratingId });
+    }
+    return true;
+  } catch { return false; }
+}
+
+export async function getLikeCount(ratingId: string): Promise<number> {
+  if (!supabaseConfigured) return 0;
+  try {
+    const { count } = await supabase.from('activity_likes')
+      .select('*', { count: 'exact', head: true }).eq('rating_id', ratingId);
+    return count || 0;
+  } catch { return 0; }
+}
+
+export async function isLikedByUser(userId: string, ratingId: string): Promise<boolean> {
+  if (!supabaseConfigured || !userId) return false;
+  try {
+    const { data } = await supabase.from('activity_likes')
+      .select('id').eq('user_id', userId).eq('rating_id', ratingId).single();
+    return !!data;
+  } catch { return false; }
+}
+
+export async function getLikesForRatings(userId: string, ratingIds: string[]): Promise<{ likes: Record<string, number>; userLiked: Set<string> }> {
+  if (!supabaseConfigured || ratingIds.length === 0) return { likes: {}, userLiked: new Set() };
+  try {
+    const { data } = await supabase.from('activity_likes')
+      .select('rating_id, user_id').in('rating_id', ratingIds);
+    const likes: Record<string, number> = {};
+    const userLiked = new Set<string>();
+    (data || []).forEach((l: any) => {
+      likes[l.rating_id] = (likes[l.rating_id] || 0) + 1;
+      if (l.user_id === userId) userLiked.add(l.rating_id);
+    });
+    return { likes, userLiked };
+  } catch { return { likes: {}, userLiked: new Set() }; }
+}
+
+export async function addComment(userId: string, ratingId: string, text: string): Promise<boolean> {
+  if (!supabaseConfigured || !userId || !text.trim()) return false;
+  try {
+    const { error } = await supabase.from('activity_comments')
+      .insert({ user_id: userId, rating_id: ratingId, text: text.trim() });
+    return !error;
+  } catch { return false; }
+}
+
+export async function getComments(ratingId: string): Promise<ActivityComment[]> {
+  if (!supabaseConfigured) return [];
+  try {
+    const { data, error } = await supabase.from('activity_comments')
+      .select('*').eq('rating_id', ratingId).order('created_at', { ascending: true });
+    if (error) return [];
+    return (data || []) as ActivityComment[];
+  } catch { return []; }
+}
+
+export async function getCommentCounts(ratingIds: string[]): Promise<Record<string, number>> {
+  if (!supabaseConfigured || ratingIds.length === 0) return {};
+  try {
+    const { data } = await supabase.from('activity_comments')
+      .select('rating_id').in('rating_id', ratingIds);
+    const counts: Record<string, number> = {};
+    (data || []).forEach((c: any) => { counts[c.rating_id] = (counts[c.rating_id] || 0) + 1; });
+    return counts;
+  } catch { return {}; }
+}
+
+export interface FriendInfo {
+  friend_id: string;
+  status: string; // 'pending' | 'accepted'
+}
+
+export interface FriendRequest {
+  id: string;
+  user_id: string;
+  friend_id: string;
+  status: string;
+  created_at: string;
+  profile?: UserProfile;
+}
+
+/** Get accepted friends */
+export async function getFriends(userId: string): Promise<FriendInfo[]> {
+  if (!supabaseConfigured || !userId) return [];
+  try {
+    const { data, error } = await supabase.from('user_friends')
+      .select('friend_id, status').eq('user_id', userId).eq('status', 'accepted');
+    if (error) { console.error('[Friends] getFriends error:', error); return []; }
+    return (data || []) as FriendInfo[];
+  } catch (err) { console.error('[Friends] getFriends exception:', err); return []; }
+}
+
+/** Get pending friend requests sent TO you */
+export async function getPendingRequests(userId: string): Promise<FriendRequest[]> {
+  if (!supabaseConfigured || !userId) return [];
+  try {
+    const { data, error } = await supabase.from('user_friends')
+      .select('id, user_id, friend_id, status, created_at')
+      .eq('friend_id', userId).eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[Friends] getPendingRequests error:', error); return []; }
+    return (data || []) as FriendRequest[];
+  } catch (err) { console.error('[Friends] getPendingRequests exception:', err); return []; }
+}
+
+/** Send a friend request (status = 'pending') */
+export async function sendFriendRequest(userId: string, friendId: string): Promise<boolean> {
+  if (!supabaseConfigured || !userId || !friendId || userId === friendId) return false;
+  try {
+    const { error } = await supabase.from('user_friends')
+      .insert({ user_id: userId, friend_id: friendId, status: 'pending' });
+    if (error) { console.error('[Friends] sendRequest error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[Friends] sendRequest exception:', err); return false; }
+}
+
+/** Accept a friend request (updates status and creates reverse follow) */
+export async function acceptFriendRequest(requestId: string, userId: string, requesterId: string): Promise<boolean> {
+  if (!supabaseConfigured) return false;
+  try {
+    // Update the request to accepted
+    const { error: updateErr } = await supabase.from('user_friends')
+      .update({ status: 'accepted' }).eq('id', requestId);
+    if (updateErr) { console.error('[Friends] accept update error:', updateErr); return false; }
+    // Create reverse friendship (so both can see each other)
+    await supabase.from('user_friends')
+      .upsert({ user_id: userId, friend_id: requesterId, status: 'accepted' }, { onConflict: 'user_id,friend_id' });
+    return true;
+  } catch (err) { console.error('[Friends] accept exception:', err); return false; }
+}
+
+/** Decline/delete a friend request */
+export async function declineFriendRequest(requestId: string): Promise<boolean> {
+  if (!supabaseConfigured) return false;
+  try {
+    const { error } = await supabase.from('user_friends').delete().eq('id', requestId);
+    if (error) { console.error('[Friends] decline error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[Friends] decline exception:', err); return false; }
+}
+
+/** Add a friend by their user ID (legacy - now sends request) */
+export async function addFriend(userId: string, friendId: string): Promise<boolean> {
+  return sendFriendRequest(userId, friendId);
+}
+
+/** Remove a friend */
+export async function removeFriend(userId: string, friendId: string): Promise<boolean> {
+  if (!supabaseConfigured || !userId) return false;
+  try {
+    const { error } = await supabase.from('user_friends')
+      .delete().eq('user_id', userId).eq('friend_id', friendId);
+    if (error) { console.error('[Friends] removeFriend error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[Friends] removeFriend exception:', err); return false; }
+}
+
+/** Search users by email (for adding friends) */
+export async function searchUsers(query: string): Promise<{ id: string; email: string }[]> {
+  if (!supabaseConfigured || !query.trim()) return [];
+  try {
+    // Query the auth.users view via a community_ratings lookup (since we can't directly query auth.users)
+    // Instead, search community_ratings for distinct user_ids and match
+    const { data, error } = await supabase.from('community_ratings')
+      .select('user_id')
+      .limit(50);
+    if (error || !data) return [];
+    // Return unique user IDs as potential friends
+    const seen = new Set<string>();
+    return data.filter((d: any) => {
+      if (seen.has(d.user_id)) return false;
+      seen.add(d.user_id);
+      return true;
+    }).map((d: any) => ({ id: d.user_id, email: d.user_id.slice(0, 8) + '...' }));
+  } catch (err) { console.error('[Friends] searchUsers exception:', err); return []; }
+}
+
+/** Get a friend's recent ratings (for activity feed) */
+export async function getFriendActivity(friendIds: string[], limit = 20): Promise<CommunityRating[]> {
+  if (!supabaseConfigured || friendIds.length === 0) return [];
+  try {
+    const { data, error } = await supabase.from('community_ratings')
+      .select('*').in('user_id', friendIds)
+      .order('updated_at', { ascending: false }).limit(limit);
+    if (error) { console.error('[Friends] getActivity error:', error); return []; }
+    return (data || []) as CommunityRating[];
+  } catch (err) { console.error('[Friends] getActivity exception:', err); return []; }
+}
+
+/** Fetch public home meals from a list of friend user IDs. */
+export interface FriendHomeMeal extends HomeMeal {
+  userId: string;
+}
+
+// Pulls home meals from both the dedicated home_meals column AND the
+// restaurant_meta.__home_meals__ fallback that ListsContext writes to when
+// the dedicated column is missing. Meals are de-duplicated by id.
+const mergeHomeMealSources = (row: Record<string, unknown>): HomeMeal[] => {
+  const primary = Array.isArray(row.home_meals) ? (row.home_meals as HomeMeal[]) : [];
+  const meta = (row.restaurant_meta && typeof row.restaurant_meta === 'object' && !Array.isArray(row.restaurant_meta))
+    ? (row.restaurant_meta as Record<string, unknown>)
+    : {};
+  const fallback = Array.isArray((meta as Record<string, unknown>).__home_meals__)
+    ? ((meta as Record<string, unknown>).__home_meals__ as HomeMeal[])
+    : [];
+  const byId = new Map<string, HomeMeal>();
+  // Prefer primary column entries (most likely fresher if both exist).
+  for (const m of fallback) if (m && m.id) byId.set(m.id, m);
+  for (const m of primary) if (m && m.id) byId.set(m.id, m);
+  return Array.from(byId.values());
+};
+
+export async function getFriendsPublicHomeMeals(friendIds: string[]): Promise<FriendHomeMeal[]> {
+  if (!supabaseConfigured || friendIds.length === 0) return [];
+  try {
+    // Try the canonical select first. If the home_meals column doesn't
+    // exist on this schema, retry without it and rely entirely on the
+    // restaurant_meta.__home_meals__ fallback.
+    let { data, error } = await supabase.from('user_app_data')
+      .select('user_id, home_meals, restaurant_meta')
+      .in('user_id', friendIds);
+    if (error) {
+      const fallback = await supabase.from('user_app_data')
+        .select('user_id, restaurant_meta')
+        .in('user_id', friendIds);
+      data = fallback.data as typeof data;
+      error = fallback.error;
+    }
+    if (error) { console.warn('[Friends] getPublicHomeMeals error:', error.message); return []; }
+    const result: FriendHomeMeal[] = [];
+    for (const row of data || []) {
+      const meals = mergeHomeMealSources(row as Record<string, unknown>);
+      for (const meal of meals) {
+        if (meal.isPublic) {
+          result.push({ ...meal, userId: (row as { user_id: string }).user_id });
+        }
+      }
+    }
+    result.sort((a, b) => b.createdAt - a.createdAt);
+    return result;
+  } catch (err) { console.error('[Friends] getPublicHomeMeals exception:', err); return []; }
+}
+
+/** Fetch a single user's public home meal by id, honoring both the dedicated
+ *  home_meals column and the restaurant_meta.__home_meals__ fallback. Returns
+ *  null when the meal is missing or not marked public. */
+export async function getPublicHomeMealById(userId: string, mealId: string): Promise<FriendHomeMeal | null> {
+  if (!supabaseConfigured || !userId || !mealId) return null;
+  try {
+    let { data, error } = await supabase.from('user_app_data')
+      .select('home_meals, restaurant_meta')
+      .eq('user_id', userId)
+      .single();
+    if (error || !data) {
+      const fallback = await supabase.from('user_app_data')
+        .select('restaurant_meta')
+        .eq('user_id', userId)
+        .single();
+      data = fallback.data as typeof data;
+      error = fallback.error;
+    }
+    if (error || !data) return null;
+    const meals = mergeHomeMealSources(data as Record<string, unknown>);
+    const match = meals.find((m) => m.id === mealId && m.isPublic);
+    return match ? { ...match, userId } : null;
+  } catch (err) {
+    console.warn('[Community] getPublicHomeMealById exception:', err);
+    return null;
+  }
+}
+
+/** Fetch public home meals for a single user (for profile view). */
+export async function getUserPublicHomeMeals(userId: string): Promise<HomeMeal[]> {
+  if (!supabaseConfigured || !userId) return [];
+  try {
+    let { data, error } = await supabase.from('user_app_data')
+      .select('home_meals, restaurant_meta')
+      .eq('user_id', userId)
+      .single();
+    if (error || !data) {
+      const fallback = await supabase.from('user_app_data')
+        .select('restaurant_meta')
+        .eq('user_id', userId)
+        .single();
+      data = fallback.data as typeof data;
+      error = fallback.error;
+    }
+    if (error || !data) return [];
+    const meals = mergeHomeMealSources(data as Record<string, unknown>);
+    return meals.filter((m) => m.isPublic).sort((a, b) => b.createdAt - a.createdAt);
+  } catch (err) { console.error('[Community] getUserPublicHomeMeals exception:', err); return []; }
+}
+
+/** Community ratings that overlap the user's top tags, scoped to a city if provided. */
+export async function getTagSimilarRestaurants(
+  myTags: string[],
+  city: string | null,
+  excludeUserId: string,
+  limit = 40,
+): Promise<CommunityRating[]> {
+  if (!supabaseConfigured || myTags.length === 0) return [];
+  try {
+    let q = supabase
+      .from('community_ratings')
+      .select('*')
+      .overlaps('tags', myTags)
+      .gte('score', 7)
+      .order('score', { ascending: false })
+      .limit(limit);
+    if (excludeUserId) q = q.neq('user_id', excludeUserId);
+    if (city) q = q.ilike('address', `%${city.split(',')[0].trim()}%`);
+    const { data, error } = await q;
+    if (error) { console.warn('[Community] getTagSimilar error:', error.message); return []; }
+    return (data || []) as CommunityRating[];
+  } catch (err) { console.warn('[Community] getTagSimilar exception:', err); return []; }
+}
+
+/** Intersect the user's follows with users marked is_expert=true. */
+export async function getFollowedExpertIds(userId: string): Promise<Set<string>> {
+  if (!supabaseConfigured || !userId) return new Set();
+  try {
+    const friends = await getFriends(userId);
+    if (friends.length === 0) return new Set();
+    const ids = friends.map((f) => f.friend_id);
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('user_id')
+      .in('user_id', ids)
+      .eq('is_expert', true);
+    return new Set((data || []).map((r: any) => r.user_id));
+  } catch { return new Set(); }
+}
+
+/* ── Expert Recommendations ── */
+
+export interface ExpertRecommendation {
+  id: string;
+  user_id: string;
+  restaurant_id: string;
+  restaurant_name: string;
+  cuisine: string;
+  price: string;
+  address: string;
+  photo_url: string;
+  recommendation_text: string;
+  highlight_dishes: string[];
+  rating: number;
+  created_at: string;
+  updated_at: string;
+  // Joined from user_profiles
+  expert_name: string;
+  expert_username: string;
+}
+
+/** Get expert recommendations for a restaurant (joined with profile data). */
+export async function getExpertRecommendations(restaurantId: string): Promise<ExpertRecommendation[]> {
+  if (!supabaseConfigured || !restaurantId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('expert_recommendations')
+      .select('*, user_profiles!expert_recommendations_user_id_fkey(display_name, username)')
+      .eq('restaurant_id', restaurantId)
+      .order('updated_at', { ascending: false });
+    if (error) {
+      // Fallback: if join fails (FK not recognized), fetch separately
+      console.warn('[Expert] Join failed, falling back to separate queries:', error.message);
+      const { data: recs, error: recErr } = await supabase
+        .from('expert_recommendations')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .order('updated_at', { ascending: false });
+      if (recErr || !recs || recs.length === 0) return [];
+      const userIds = [...new Set(recs.map((r: any) => r.user_id))];
+      const profiles = await getProfilesByIds(userIds);
+      return recs.map((r: any) => ({
+        ...r,
+        expert_name: profiles[r.user_id]?.display_name || 'Expert',
+        expert_username: profiles[r.user_id]?.username || '',
+      })) as ExpertRecommendation[];
+    }
+    return (data || []).map((r: any) => ({
+      ...r,
+      expert_name: r.user_profiles?.display_name || 'Expert',
+      expert_username: r.user_profiles?.username || '',
+      user_profiles: undefined,
+    })) as ExpertRecommendation[];
+  } catch (err) { console.error('[Expert] getRecommendations exception:', err); return []; }
+}
+
+/** Publish an expert recommendation for a restaurant. */
+export async function publishExpertRecommendation(
+  userId: string,
+  restaurantId: string,
+  data: { name: string; cuisine: string; price: string; address: string; photoUrl: string; text: string; highlightDishes: string[]; rating: number }
+): Promise<boolean> {
+  if (!supabaseConfigured || !userId) return false;
+  try {
+    const { error } = await supabase.from('expert_recommendations').upsert({
+      user_id: userId,
+      restaurant_id: restaurantId,
+      restaurant_name: data.name,
+      cuisine: data.cuisine,
+      price: data.price,
+      address: data.address,
+      photo_url: data.photoUrl,
+      recommendation_text: data.text,
+      highlight_dishes: data.highlightDishes,
+      rating: data.rating,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,restaurant_id' });
+    if (error) { console.error('[Expert] publishRecommendation error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[Expert] publishRecommendation exception:', err); return false; }
+}
+
+/** Get count of expert recommendations by a user. */
+export async function getExpertRecommendationCount(userId: string): Promise<number> {
+  if (!supabaseConfigured || !userId) return 0;
+  try {
+    const { count, error } = await supabase.from('expert_recommendations')
+      .select('*', { count: 'exact', head: true }).eq('user_id', userId);
+    if (error) return 0;
+    return count || 0;
+  } catch { return 0; }
+}
+
+/** Get all expert profiles (users with is_expert=true). */
+export async function getExpertProfiles(): Promise<UserProfile[]> {
+  if (!supabaseConfigured) return [];
+  try {
+    const { data, error } = await supabase.from('user_profiles')
+      .select('*').eq('is_expert', true);
+    if (error) return [];
+    return (data || []) as UserProfile[];
+  } catch { return []; }
+}
+
+/** Remove an expert recommendation. */
+export async function removeExpertRecommendation(userId: string, restaurantId: string): Promise<boolean> {
+  if (!supabaseConfigured || !userId) return false;
+  try {
+    const { error } = await supabase.from('expert_recommendations')
+      .delete().eq('user_id', userId).eq('restaurant_id', restaurantId);
+    if (error) { console.error('[Expert] removeRecommendation error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[Expert] removeRecommendation exception:', err); return false; }
+}
+
+/* ─── Hotel Dining ─── */
+
+export type DiningType = 'breakfast' | 'restaurant' | 'bar' | 'room_service' | 'pool_bar' | 'rooftop';
+
+export interface HotelDining {
+  id: string;
+  hotel_place_id: string;
+  hotel_name: string;
+  hotel_address: string;
+  restaurant_place_id: string;
+  restaurant_name: string;
+  dining_type: DiningType;
+  added_by: string;
+  created_at: string;
+}
+
+/** Get all dining options for a hotel. */
+export async function getHotelDining(hotelPlaceId: string): Promise<HotelDining[]> {
+  if (!supabaseConfigured || !hotelPlaceId) return [];
+  try {
+    const { data, error } = await supabase.from('hotel_dining')
+      .select('*').eq('hotel_place_id', hotelPlaceId).order('created_at', { ascending: false });
+    if (error) { console.error('[HotelDining] getHotelDining error:', error); return []; }
+    return (data || []) as HotelDining[];
+  } catch (err) { console.error('[HotelDining] getHotelDining exception:', err); return []; }
+}
+
+/** Add a dining option to a hotel. */
+export async function addHotelDining(
+  userId: string,
+  data: { hotelPlaceId: string; hotelName: string; hotelAddress: string; restaurantPlaceId: string; restaurantName: string; diningType: DiningType }
+): Promise<boolean> {
+  if (!supabaseConfigured || !userId) return false;
+  try {
+    const { error } = await supabase.from('hotel_dining').upsert({
+      hotel_place_id: data.hotelPlaceId,
+      hotel_name: data.hotelName,
+      hotel_address: data.hotelAddress,
+      restaurant_place_id: data.restaurantPlaceId,
+      restaurant_name: data.restaurantName,
+      dining_type: data.diningType,
+      added_by: userId,
+    }, { onConflict: 'hotel_place_id,restaurant_place_id' });
+    if (error) { console.error('[HotelDining] addHotelDining error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[HotelDining] addHotelDining exception:', err); return false; }
+}
+
+/** Remove a dining option from a hotel. */
+export async function removeHotelDining(userId: string, hotelPlaceId: string, restaurantPlaceId: string): Promise<boolean> {
+  if (!supabaseConfigured || !userId) return false;
+  try {
+    const { error } = await supabase.from('hotel_dining')
+      .delete().eq('added_by', userId).eq('hotel_place_id', hotelPlaceId).eq('restaurant_place_id', restaurantPlaceId);
+    if (error) { console.error('[HotelDining] removeHotelDining error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[HotelDining] removeHotelDining exception:', err); return false; }
+}
+
+/* ═══════════════════════════════════════════════
+   VISIT HISTORY
+   ═══════════════════════════════════════════════ */
+
+export interface VisitRecord {
+  id: string;
+  user_id: string;
+  restaurant_id: string;
+  score: number;
+  notes: string;
+  visit_date: string;
+  tags: string[];
+  would_return: boolean;
+  photos: { url: string; caption: string; isFavorite: boolean }[];
+  friend_ids: string[];
+  created_at: string;
+}
+
+/** Save a previous rating as a visit history record. */
+export async function saveVisitRecord(
+  userId: string,
+  data: {
+    restaurantId: string;
+    score: number;
+    notes: string;
+    visitDate: string;
+    tags: string[];
+    wouldReturn: boolean;
+    photos: { url: string; caption: string; isFavorite: boolean }[];
+    friendIds: string[];
+  }
+): Promise<boolean> {
+  if (!supabaseConfigured || !userId) return false;
+  try {
+    const { error } = await supabase.from('visit_history').insert({
+      user_id: userId,
+      restaurant_id: data.restaurantId,
+      score: data.score,
+      notes: data.notes,
+      visit_date: data.visitDate,
+      tags: data.tags,
+      would_return: data.wouldReturn,
+      photos: data.photos,
+      friend_ids: data.friendIds,
+    });
+    if (error) { console.error('[VisitHistory] saveVisitRecord error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[VisitHistory] saveVisitRecord exception:', err); return false; }
+}
+
+/** Get visit history for a user + restaurant, ordered by visit date DESC. */
+export async function getVisitHistory(userId: string, restaurantId: string): Promise<VisitRecord[]> {
+  if (!supabaseConfigured || !userId || !restaurantId) return [];
+  try {
+    const { data, error } = await supabase.from('visit_history')
+      .select('*').eq('user_id', userId).eq('restaurant_id', restaurantId)
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[VisitHistory] getVisitHistory error:', error); return []; }
+    return (data || []) as VisitRecord[];
+  } catch (err) { console.error('[VisitHistory] getVisitHistory exception:', err); return []; }
+}
+
+/** Delete a visit history record. */
+export async function deleteVisitRecord(userId: string, recordId: string): Promise<boolean> {
+  if (!supabaseConfigured || !userId || !recordId) return false;
+  try {
+    const { error } = await supabase.from('visit_history')
+      .delete().eq('user_id', userId).eq('id', recordId);
+    if (error) { console.error('[VisitHistory] deleteVisitRecord error:', error); return false; }
+    return true;
+  } catch (err) { console.error('[VisitHistory] deleteVisitRecord exception:', err); return false; }
+}
