@@ -7,6 +7,7 @@ import { useLists } from '../contexts/ListsContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { getPublicRecipes, type Recipe } from '../lib/supabase-recipes';
 import { getProfilesByIds, getFriends, type UserProfile } from '../lib/supabase-community';
+import { PageShell } from '../components/ui';
 
 type SourceFilter = 'all' | 'friends' | 'chefs' | 'cooks';
 type SortKey = 'recent' | 'quick' | 'az';
@@ -366,8 +367,10 @@ export const RecipesForYou: React.FC = () => {
         </div>
       </div>
 
-      {/* Body */}
-      <div className="max-w-5xl mx-auto p-4">
+      {/* Body — wrapped in PageShell so the grid column matches the
+          canonical max-w-6xl rhythm used across the rest of the
+          sidebar layout. */}
+      <PageShell width="default" className="py-6">
         {loading ? (
           <div className={cn('grid gap-4', phoneMode ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4')}>
             {Array.from({ length: 8 }).map((_, i) => (
@@ -466,7 +469,7 @@ export const RecipesForYou: React.FC = () => {
             })}
           </div>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 };

@@ -10,6 +10,7 @@ import {
   getExpertProfiles, getUserRatings, getFollowCounts, followPublicAccount, getFriends,
   type UserProfile, type CommunityRating,
 } from '../lib/supabase-community';
+import { PageShell, SectionHeader, FilterPill, EmptyStateView, LoadingState } from '../components/ui';
 
 interface ExpertData {
   profile: UserProfile;
@@ -159,40 +160,32 @@ export const Experts: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="pb-32">
-        <div className="flex items-center justify-center py-20">
-          <Loader2 size={28} className="animate-spin text-primary" />
-        </div>
-      </div>
+      <PageShell width="default" className="pb-32 pt-5">
+        <LoadingState variant="spinner" label="Loading experts…" />
+      </PageShell>
     );
   }
 
   if (experts.length === 0) {
     return (
-      <div className="pb-32">
-        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-          <Crown size={32} className="text-on-surface/15 mb-3" />
-          <p className="text-sm font-medium text-on-surface/40">No experts yet</p>
-          <p className="text-xs text-on-surface/30 mt-1">Expert reviewers will appear here once they join</p>
-        </div>
-      </div>
+      <PageShell width="default" className="pb-32 pt-5">
+        <EmptyStateView
+          icon={<Crown size={48} />}
+          heading="No experts yet"
+          description="Expert reviewers will appear here once they join."
+        />
+      </PageShell>
     );
   }
 
   return (
-    <div className="pb-32">
+    <PageShell width="default" className="pb-32 pt-5">
 
-      <main className="px-3 pt-5">
-        <section className="mb-10">
-          <h2 className="text-2xl font-serif font-bold mb-5">Meet the Experts</h2>
-
-          {/* ── Sort + cuisine specialty filters ── */}
-          <div className="mb-5">
-            {/* Sort dropdown + result count */}
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-on-surface/40">
-                {displayExperts.length} {displayExperts.length === 1 ? 'expert' : 'experts'}
-              </p>
+        <section className="mb-12">
+          <SectionHeader
+            eyebrow="Curated"
+            title="Meet the experts"
+            action={
               <div className="relative" ref={sortMenuRef}>
                 <button
                   onClick={() => setSortMenuOpen((v) => !v)}
@@ -200,7 +193,7 @@ export const Experts: React.FC = () => {
                 >
                   <ArrowUpDown size={12} />
                   <span>{SORT_LABELS[sortBy]}</span>
-                  <ChevronDown size={12} className={cn("transition-transform", sortMenuOpen && "rotate-180")} />
+                  <ChevronDown size={12} className={cn('transition-transform', sortMenuOpen && 'rotate-180')} />
                 </button>
                 <AnimatePresence>
                   {sortMenuOpen && (
@@ -209,15 +202,15 @@ export const Experts: React.FC = () => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.96 }}
                       transition={{ duration: 0.12 }}
-                      className="absolute top-full right-0 mt-1.5 w-48 bg-surface rounded-2xl shadow-lg border border-on-surface/[0.08] overflow-hidden z-20"
+                      className="absolute top-full right-0 mt-1.5 w-48 bg-surface rounded-2xl shadow-[var(--shadow-card-hover)] border border-on-surface/[0.08] overflow-hidden z-20"
                     >
                       {(Object.keys(SORT_LABELS) as ExpertSort[]).map((s) => (
                         <button
                           key={s}
                           onClick={() => { setSortBy(s); setSortMenuOpen(false); }}
                           className={cn(
-                            "w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-left transition-colors",
-                            sortBy === s ? "bg-primary/8 text-primary" : "text-on-surface/70 hover:bg-on-surface/[0.04]"
+                            'w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-left transition-colors',
+                            sortBy === s ? 'bg-primary/[0.08] text-primary' : 'text-on-surface/70 hover:bg-on-surface/[0.04]',
                           )}
                         >
                           <span>{SORT_LABELS[s]}</span>
@@ -228,59 +221,55 @@ export const Experts: React.FC = () => {
                   )}
                 </AnimatePresence>
               </div>
-            </div>
+            }
+          />
 
-            {/* Cuisine specialty filter pills */}
+          {/* Result count + cuisine specialty filters */}
+          <div className="mb-6 space-y-3">
+            <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-ink-3">
+              {displayExperts.length} {displayExperts.length === 1 ? 'expert' : 'experts'}
+            </p>
             {allCuisines.length > 0 && (
-              <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-3 px-3 pb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
-                <button
+              <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 md:-mx-8 px-5 md:px-8 pb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <FilterPill
+                  size="sm"
+                  active={cuisineFilter === null}
                   onClick={() => setCuisineFilter(null)}
-                  className={cn(
-                    "px-3.5 h-8 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-colors",
-                    cuisineFilter === null
-                      ? "bg-primary text-white"
-                      : "bg-on-surface/[0.05] text-on-surface/60 hover:bg-on-surface/[0.08]"
-                  )}
                 >
                   All cuisines
-                </button>
+                </FilterPill>
                 {allCuisines.map((cuisine) => (
-                  <button
+                  <FilterPill
                     key={cuisine}
+                    size="sm"
+                    active={cuisineFilter === cuisine}
                     onClick={() => setCuisineFilter(cuisineFilter === cuisine ? null : cuisine)}
-                    className={cn(
-                      "px-3.5 h-8 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-colors",
-                      cuisineFilter === cuisine
-                        ? "bg-primary text-white"
-                        : "bg-on-surface/[0.05] text-on-surface/60 hover:bg-on-surface/[0.08]"
-                    )}
                   >
                     {cuisine}
-                  </button>
+                  </FilterPill>
                 ))}
               </div>
             )}
           </div>
 
           {displayExperts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Crown size={28} className="text-on-surface/15 mb-3" />
-              <p className="text-sm font-medium text-on-surface/40">No experts match that cuisine</p>
-              {cuisineFilter && (
-                <button onClick={() => setCuisineFilter(null)} className="mt-2 text-xs font-semibold text-primary">
-                  Clear filter
-                </button>
-              )}
-            </div>
+            <EmptyStateView
+              icon={<Crown size={48} />}
+              heading="No experts match that cuisine"
+              action={cuisineFilter ? { label: 'Clear filter', onClick: () => setCuisineFilter(null) } : undefined}
+            />
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            /* Phase 4 spec: responsive 2/3/4 grid replacing the
+               fixed 2-col layout. ExpertCard radius collapsed to
+               rounded-2xl in ExpertCard.tsx. */
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {displayExperts.map((e) => {
                 const isFollowed = followedIds.has(e.profile.user_id);
                 return (
                   <Link key={e.profile.user_id} to={`/user/${e.profile.username}`}>
                     <motion.div
                       whileHover={{ scale: 1.02 }}
-                      className="relative aspect-square rounded-3xl overflow-hidden group cursor-pointer"
+                      className="relative aspect-square rounded-2xl overflow-hidden group cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-200"
                     >
                       <div className="h-full w-full bg-gradient-to-br from-amber-100 to-primary/10 flex items-center justify-center">
                         <span className="text-5xl font-serif font-bold text-primary/30">{e.profile.display_name.charAt(0).toUpperCase()}</span>
@@ -434,7 +423,6 @@ export const Experts: React.FC = () => {
             </ul>
           </section>
         )}
-      </main>
-    </div>
+    </PageShell>
   );
 };

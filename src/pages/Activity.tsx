@@ -26,6 +26,7 @@ import { usePosts, type Post } from '../contexts/PostsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { listReelIdsCommentedByUser } from '../lib/supabase-reels';
 import { listPostIdsCommentedByUser } from '../lib/supabase-posts';
+import { PageShell, EmptyStateView } from '../components/ui';
 
 type ActivityTab = 'saved' | 'likes' | 'comments';
 
@@ -192,18 +193,6 @@ const PostTile: React.FC<{ post: Post; onClick: () => void }> = ({ post, onClick
   );
 };
 
-/* ── Empty state ──────────────────────────────────────────────────────── */
-
-const EmptyState: React.FC<{ icon: React.ReactNode; title: string; body: string }> = ({ icon, title, body }) => (
-  <div className="flex flex-col items-center justify-center text-center py-20 px-8">
-    <div className="w-16 h-16 rounded-full bg-on-surface/[0.05] flex items-center justify-center text-on-surface/30 mb-4">
-      {icon}
-    </div>
-    <h3 className="font-serif font-bold text-on-surface text-[17px] mb-1">{title}</h3>
-    <p className="text-on-surface/55 text-[13px] leading-snug max-w-[280px]">{body}</p>
-  </div>
-);
-
 /* ── Index page (3 navigation rows) ────────────────────────────────────── */
 
 interface IndexRowProps {
@@ -369,11 +358,11 @@ export const Activity: React.FC = () => {
     return (
       <div className="min-h-screen bg-surface pb-32">
         <ActivityHeader title="Your activity" onBack={() => navigate(-1)} />
-        <main className="max-w-2xl mx-auto px-5 pt-6">
-          <p className="text-on-surface/55 text-[13px] leading-snug mb-5 px-1">
+        <PageShell width="narrow" className="pt-6">
+          <p className="text-ink-3 text-[13px] leading-snug mb-6">
             Everything you've saved, liked, and joined in on — in one place.
           </p>
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             <IndexRow
               icon={<Bookmark size={20} />}
               label="Saved"
@@ -397,7 +386,7 @@ export const Activity: React.FC = () => {
               to="/activity/comments"
             />
           </div>
-        </main>
+        </PageShell>
       </div>
     );
   }
@@ -406,19 +395,23 @@ export const Activity: React.FC = () => {
   return (
     <div className="min-h-screen bg-surface pb-32">
       <ActivityHeader title={title} onBack={() => navigate('/activity')} />
-      <main className="max-w-3xl mx-auto px-5 pt-5">
+      <PageShell width="default" className="pt-6">
         {activeLoading && items.length === 0 ? (
-          <div className="flex items-center justify-center py-20 text-on-surface/45">
+          <div className="flex items-center justify-center py-20 text-ink-3">
             <Loader2 size={22} className="animate-spin" />
           </div>
         ) : items.length === 0 ? (
-          <EmptyState icon={emptyIcon} title={emptyTitle} body={emptyBody} />
+          <EmptyStateView icon={emptyIcon} heading={emptyTitle} description={emptyBody} />
         ) : (
           <>
-            <p className="text-on-surface/55 text-[12px] mb-4 tabular-nums">
+            <p className="text-ink-3 text-[12px] mb-4 tabular-nums">
               {items.length} {items.length === 1 ? 'item' : 'items'}
             </p>
-            <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+            {/* Square-tile grid that scales with the viewport. Phase 4
+                spec: grid-cols-3 mobile → grid-cols-4 md → grid-cols-5
+                lg. Brings the likes/saved/comments list in line with
+                Discover's search-results density on wide monitors. */}
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
               {items.map((it) =>
                 it.kind === 'reel' ? (
                   <ReelTile key={`reel-${it.reel.id}`} reel={it.reel} onClick={() => handleReelTap(it.reel)} />
@@ -429,7 +422,7 @@ export const Activity: React.FC = () => {
             </div>
           </>
         )}
-      </main>
+      </PageShell>
     </div>
   );
 };

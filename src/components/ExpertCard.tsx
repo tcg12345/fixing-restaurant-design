@@ -22,7 +22,7 @@ export const ExpertCard: React.FC<ExpertCardProps> = ({
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className="relative aspect-square rounded-3xl overflow-hidden group cursor-pointer"
+      className="relative aspect-square rounded-2xl overflow-hidden group cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-200"
     >
       <img
         src={image}

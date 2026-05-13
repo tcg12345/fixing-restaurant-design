@@ -204,7 +204,7 @@ export const CircleActivity: React.FC = () => {
           <p className="text-on-surface/30 text-xs mt-1">Try adjusting your search or filters</p>
         </div>
       ) : (
-        <ul className="divide-y divide-on-surface/[0.06]">
+        <ul className="divide-y divide-on-surface/[0.06] max-w-2xl mx-auto">
           {filtered.map((restaurant) => (
             <li key={restaurant.id}>
               <Link to={`/restaurant/${restaurant.id}`} className="block group">

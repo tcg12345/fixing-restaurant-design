@@ -364,6 +364,62 @@ Every inline `text-[28px] font-serif font-bold` section title is now `<SectionHe
 
 ---
 
+## Phase 4 — Profile / Activity / Experts / Pantry / RecipesForYou / CircleActivity
+
+### Profile
+
+| Change | Decision |
+|---|---|
+| Page wrap | `<PageShell width="default">` (max-w-6xl) replaces the unbounded wrapper. |
+| Header layout | True two-column on `lg+`: avatar + identity on the left (`grid-cols-[minmax(0,1fr)_minmax(0,360px)] gap-12`), stats + actions block on the right. On `<lg` the layout stacks. |
+| Avatar | 92px on mobile bumps to **112px** on `lg+` so it doesn't get swallowed by the wide header. |
+| Tabs | 4-tab `grid-cols-4` (each ballooning to 275px on a wide column) → 4 left-aligned underline tabs **capped to `w-[120px]` each** with a hugging `-bottom-px` indicator. Airbnb-style. |
+| Inline `text-on-surface/50, /45, /40` | Retoned to `text-ink-2 / text-ink-3` so dark mode flips. |
+| Full-bleed strips inside `<main>` | `-mx-5` → `-mx-5 md:-mx-8` so the negative margin cancels the matching responsive padding. |
+
+### Activity
+
+| Change | Decision |
+|---|---|
+| Page wrap | Index uses `<PageShell width="narrow">` (max-w-3xl). List pages use `<PageShell width="default">`. Replaces the `max-w-2xl` / `max-w-3xl` mix. |
+| Likes/saved/comments grid | `grid-cols-3` at all widths → `grid-cols-3 md:grid-cols-4 lg:grid-cols-5`. Density now scales with viewport like Discover's search-results grid. |
+| Gap | `gap-2.5 sm:gap-3` (off-scale) → `gap-3 sm:gap-4`. |
+| Local `EmptyState` component | **Deleted.** Replaced with the canonical `<EmptyStateView>` per the Phase 0 follow-up. |
+| Loading state | Bare `<Loader2>` retoned to `text-ink-3` for dark-mode parity. |
+
+### Experts
+
+| Change | Decision |
+|---|---|
+| Page wrap | `<PageShell width="default">` replaces the unbounded `px-3 pt-5` wrapper. |
+| Loading state | Inline spinner block → `<LoadingState variant="spinner" label="…">`. |
+| Empty states (no-experts-yet, no-cuisine-match) | Inline JSX → `<EmptyStateView>` with optional `action` for the "Clear filter" button. |
+| Section header | Inline `text-2xl font-serif font-bold` → `<SectionHeader eyebrow="Curated" title="Meet the experts" action={...}>`. The sort dropdown lives in the action slot. |
+| Cuisine filter pills | Four inline pill specs collapsed to `<FilterPill size="sm">` with shared idle/active styling. |
+| Grid | `grid-cols-2 gap-4` → `grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6`. |
+| Card radius | The inline card was `rounded-3xl`; **`ExpertCard.tsx`** itself also `rounded-3xl`. Both collapsed to `rounded-2xl` per Phase 0 spec, plus the new `--shadow-card` / hover ramp. |
+
+### RecipesForYou
+
+| Change | Decision |
+|---|---|
+| Body wrap | `<div className="max-w-5xl mx-auto p-4">` → `<PageShell width="default" className="py-6">`. Bumps from `max-w-5xl p-4` (1024 / 16px) to `max-w-6xl px-8 py-6` to match the rest of the sidebar layout. |
+
+### Pantry
+
+| Change | Decision |
+|---|---|
+| Outer wrap | `<div className="pb-32">` → `<div className="pb-32 max-w-6xl mx-auto w-full">`. Surgical width cap that doesn't disturb the inner `px-3` / per-view paddings (Pantry has many sub-views; adding outer `px-8` would compound). |
+| Grid gaps | Every `gap-x-3 gap-y-6` (4 occurrences: lines 2353, 2428, 5398, 7304) → `gap-6`. Off-scale asymmetric gap removed. |
+
+### CircleActivity
+
+| Change | Decision |
+|---|---|
+| Feed `<ul>` width | Capped to `max-w-2xl mx-auto`. The post photo at `w-full max-w-md aspect-[5/3]` (448px) now sits inside a 672px feed column instead of floating in an unbounded page. |
+
+---
+
 ## Open follow-ups
 
 Tracked here so they don't get lost between phases. Items move to "done" or to a deeper phase note as they land.
@@ -371,6 +427,7 @@ Tracked here so they don't get lost between phases. Items move to "done" or to a
 - [x] Phase 1 — Sidebar persistent-expanded on `>=1024px`; one `px-4` rhythm; `DesktopHeader` route-context fill + unified `+ Add` menu.
 - [x] Phase 2 — Discover wrapped in PageShell, killed the 25%-opacity-watermark "Recommended" cards, two-column desktop layout with sticky DiscoverRail.
 - [x] Phase 3 — `RestaurantDetailDesktop` two-column with sticky right rail; hero gradient → `var(--color-surface)`; replaced inline `#2f3425` / `#d4a373`; section chrome varied; `RestaurantPanel.tsx` height + ScorePill aligned.
-- [ ] Phase 4 — Profile / Activity / Experts / Pantry / RecipesForYou run through PageShell + the new primitives; delete the local `EmptyState` in `Activity.tsx`. **Hide DesktopHeader on detail/sub-pages** that render their own sticky `<header>` (the Phase 1 audit list) so the two-stack disappears.
+- [x] Phase 4 — Profile / Activity / Experts / Pantry / RecipesForYou / CircleActivity migrated to PageShell + the new primitives; local `EmptyState` in `Activity.tsx` deleted; ExpertCard radius collapsed to `rounded-2xl`; Pantry asymmetric gaps unified to `gap-6`.
+- [ ] Phase 4 follow-up — **Hide DesktopHeader on detail/sub-pages** that render their own sticky `<header>` (Activity, SearchMain, RecipesForYou, UserProfile, FriendReviewDetail, etc. — full list in the Phase 1 audit). Not landed yet; touches `App.tsx`'s `hideHeader` regex.
 - [ ] Phase 5 — Mapbox style switch on `RestaurantPanel.tsx:377` and `Discover.tsx:136-141`; semantic olive / tan / persimmon accents.
 - [ ] Phase 6 — Mobile pass after desktop is solid.

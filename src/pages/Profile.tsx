@@ -13,6 +13,7 @@ import { usePosts } from '../contexts/PostsContext';
 import { ProfileReelsSection, ProfilePostsSection } from '../components/ProfileReelsSection';
 import { useSettings } from '../contexts/SettingsContext';
 import { saveProfile, getFollowCounts, getExpertRecommendationCount } from '../lib/supabase-community';
+import { PageShell } from '../components/ui';
 import { geocodePlace } from '../components/HomeLocationBar';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
@@ -945,196 +946,215 @@ export const Profile: React.FC = () => {
         </div>
       )}
 
-      {/* ── Profile header ────────────────────────────────────────────── */}
-      <div className="px-5 pt-6 pb-5">
-        {/* Avatar + horizontal stats row */}
-        <div className="flex items-center gap-5">
-          <div className="relative flex-shrink-0">
-            <div className="w-[92px] h-[92px] rounded-full bg-gradient-to-br from-primary/30 to-primary/15 flex items-center justify-center">
-              <span className="text-[42px] font-serif font-bold text-primary leading-none">{displayName.charAt(0).toUpperCase()}</span>
-            </div>
-            {profile?.is_expert && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-amber-400 ring-[3px] ring-surface flex items-center justify-center">
-                <Crown size={13} className="text-white" />
-              </div>
-            )}
-          </div>
+      {/* ── Profile header ──────────────────────────────────────────────
+          On desktop (lg+) the header is a true two-column block:
+          avatar + identity left, stats + actions right. The 92px
+          avatar and lonely 3-stat row are gone — both sides now
+          fill the row instead of leaving a 45%-empty gap. On mobile
+          the layout stacks. */}
+      <PageShell width="default" className="pt-6 pb-5">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] lg:gap-12 lg:items-start">
 
-          <div className="flex-1 grid grid-cols-3 gap-2">
-            <button type="button" onClick={goToMyRatings} className="flex flex-col items-center text-center">
-              <span className="text-[24px] font-bold text-on-surface leading-none tabular-nums">{ratings.length}</span>
-              <span className="text-[12px] text-on-surface/45 mt-1.5 font-medium">rated</span>
-            </button>
-            <button type="button" onClick={() => navigate('/circle')} className="flex flex-col items-center text-center">
-              <span className="text-[24px] font-bold text-on-surface leading-none tabular-nums">{followers}</span>
-              <span className="text-[12px] text-on-surface/45 mt-1.5 font-medium">followers</span>
-            </button>
-            <button type="button" onClick={() => navigate('/circle')} className="flex flex-col items-center text-center">
-              <span className="text-[24px] font-bold text-on-surface leading-none tabular-nums">{following}</span>
-              <span className="text-[12px] text-on-surface/45 mt-1.5 font-medium">following</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Name + handle */}
-        <div className="mt-5 flex items-baseline gap-2 flex-wrap">
-          <h1 className="text-[26px] font-serif font-bold text-on-surface leading-none tracking-tight">{displayName}</h1>
-          <span className="text-[15px] text-on-surface/40">@{username}</span>
-        </div>
-
-        {/* Public + joined */}
-        <div className="flex items-center gap-2 mt-2.5">
-          <span className={cn(
-            'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border',
-            profile?.is_public
-              ? 'bg-emerald-50/70 border-emerald-200/60 text-emerald-700'
-              : 'bg-on-surface/[0.04] border-on-surface/8 text-on-surface/45',
-          )}>
-            {profile?.is_public ? <Globe size={11} /> : <EyeOff size={11} />}
-            {profile?.is_public ? 'Public' : 'Private'}
-          </span>
-          {profile?.is_expert && (
-            <>
-              <span className="text-on-surface/25 text-xs">·</span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200/70 text-[11px] font-semibold text-amber-800">
-                <Star size={10} className="fill-amber-500 text-amber-500" />
-                Expert{expertPickCount > 0 && ` · ${expertPickCount}`}
-              </span>
-            </>
-          )}
-          {memberSince && (
-            <>
-              <span className="text-on-surface/25 text-xs">·</span>
-              <span className="text-[12px] text-on-surface/45">Joined {memberSince}</span>
-            </>
-          )}
-        </div>
-
-        {bio && <p className="text-[13.5px] text-on-surface/65 mt-3 leading-relaxed">{bio}</p>}
-
-        {/* Action row */}
-        <div ref={createWrapRef} className="relative flex items-center gap-2 mt-4">
-          <button
-            type="button"
-            onClick={() => setCreateMenuOpen((o) => !o)}
-            aria-haspopup="menu"
-            aria-expanded={createMenuOpen}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-xl bg-primary text-white text-[13px] font-bold hover:bg-primary/90 transition-colors"
-          >
-            <Plus
-              size={15}
-              strokeWidth={2.5}
-              className={cn('transition-transform duration-200', createMenuOpen && 'rotate-45')}
-            />
-            Create
-          </button>
-          <button
-            type="button"
-            onClick={openEditProfile}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-xl bg-on-surface/[0.06] text-on-surface/80 text-[13px] font-bold border border-on-surface/8 hover:bg-on-surface/10 transition-colors"
-          >
-            <Edit3 size={14} />
-            Edit
-          </button>
-          <Link
-            to={publicProfilePath}
-            className="w-10 h-10 inline-flex items-center justify-center rounded-xl bg-on-surface/[0.06] border border-on-surface/8 text-on-surface/55 hover:bg-on-surface/10 transition-colors"
-            aria-label="View public profile"
-          >
-            <Upload size={15} />
-          </Link>
-          <button
-            type="button"
-            onClick={openSettings}
-            className="w-10 h-10 inline-flex items-center justify-center rounded-xl bg-on-surface/[0.06] border border-on-surface/8 text-on-surface/55 hover:bg-on-surface/10 transition-colors"
-            aria-label="Settings"
-          >
-            <Settings size={15} />
-          </button>
-
-          <AnimatePresence>
-            {createMenuOpen && (
-              <motion.div
-                role="menu"
-                initial={{ opacity: 0, y: -4, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -4, scale: 0.97 }}
-                transition={{ duration: 0.14, ease: 'easeOut' }}
-                className="absolute left-0 top-[calc(100%+0.25rem)] w-52 z-30 rounded-2xl bg-surface border border-on-surface/[0.08] shadow-xl overflow-hidden"
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => { setCreateMenuOpen(false); openAddPostModal(); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-on-surface/[0.05] text-left"
-                >
-                  <span className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-                    <ImageIcon size={16} strokeWidth={2.2} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[14px] font-bold leading-tight">Post</span>
-                    <span className="block text-[11px] text-on-surface/50 leading-tight">Up to 15 photos & videos</span>
-                  </span>
-                </button>
-                <div className="border-t border-on-surface/[0.06]" />
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => { setCreateMenuOpen(false); openAddReelModal(); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-on-surface/[0.05] text-left"
-                >
-                  <span className="w-9 h-9 rounded-xl bg-on-surface/[0.06] text-on-surface flex items-center justify-center flex-shrink-0">
-                    <Film size={16} strokeWidth={2.2} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[14px] font-bold leading-tight">Reel</span>
-                    <span className="block text-[11px] text-on-surface/50 leading-tight">Single short video</span>
-                  </span>
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* ── Tab bar ───────────────────────────────────────────────────── */}
-      <div className="border-t border-on-surface/[0.08]">
-        <div className="grid grid-cols-4">
-          {([
-            ['top', Star, 'TOP'],
-            ['posts', LayoutGrid, 'POSTS'],
-            ['reels', Film, 'REELS'],
-            ['rated', ListIcon, 'RATED'],
-          ] as const).map(([key, Icon, label]) => {
-            const isActive = activeTab === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActiveTab(key)}
-                className={cn(
-                  'relative py-3.5 flex flex-col items-center justify-center gap-1.5 transition-colors',
-                  isActive ? 'text-on-surface' : 'text-on-surface/30',
-                )}
-              >
-                <Icon size={18} className={cn(isActive && key === 'top' && 'fill-on-surface')} />
-                <span className={cn(
-                  'text-[10px] font-bold tracking-[0.18em]',
-                  isActive ? 'text-on-surface' : 'text-on-surface/40',
-                )}>
-                  {label}
+          {/* LEFT — avatar + identity */}
+          <div className="flex items-start gap-5">
+            <div className="relative flex-shrink-0">
+              <div className="w-[92px] h-[92px] lg:w-[112px] lg:h-[112px] rounded-full bg-gradient-to-br from-primary/30 to-primary/15 flex items-center justify-center">
+                <span className="text-[42px] lg:text-[48px] font-serif font-medium text-primary leading-none">
+                  {displayName.charAt(0).toUpperCase()}
                 </span>
-                {isActive && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-on-surface" />
+              </div>
+              {profile?.is_expert && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-amber-400 ring-[3px] ring-surface flex items-center justify-center">
+                  <Crown size={13} className="text-white" />
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              {/* Name + handle */}
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <h1 className="text-[26px] lg:text-[32px] font-serif font-medium text-on-surface leading-tight tracking-tight">
+                  {displayName}
+                </h1>
+                <span className="text-[15px] text-ink-3">@{username}</span>
+              </div>
+
+              {/* Public + expert + joined */}
+              <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                <span className={cn(
+                  'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border',
+                  profile?.is_public
+                    ? 'bg-emerald-50/70 border-emerald-200/60 text-emerald-700'
+                    : 'bg-on-surface/[0.04] border-on-surface/8 text-ink-3',
+                )}>
+                  {profile?.is_public ? <Globe size={11} /> : <EyeOff size={11} />}
+                  {profile?.is_public ? 'Public' : 'Private'}
+                </span>
+                {profile?.is_expert && (
+                  <>
+                    <span className="text-on-surface/25 text-xs">·</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200/70 text-[11px] font-semibold text-amber-800">
+                      <Star size={10} className="fill-amber-500 text-amber-500" />
+                      Expert{expertPickCount > 0 && ` · ${expertPickCount}`}
+                    </span>
+                  </>
                 )}
+                {memberSince && (
+                  <>
+                    <span className="text-on-surface/25 text-xs">·</span>
+                    <span className="text-[12px] text-ink-3">Joined {memberSince}</span>
+                  </>
+                )}
+              </div>
+
+              {bio && <p className="text-[14px] text-ink-2 mt-3 leading-relaxed max-w-prose">{bio}</p>}
+            </div>
+          </div>
+
+          {/* RIGHT — stats + actions block */}
+          <div className="mt-6 lg:mt-0 space-y-5">
+            {/* Stats row — capped width so the three numbers cluster
+                tightly rather than stretching across a wide column. */}
+            <div className="grid grid-cols-3 gap-2 lg:gap-3 max-w-sm lg:max-w-none">
+              <button type="button" onClick={goToMyRatings} className="flex flex-col items-center text-center rounded-2xl py-3 hover:bg-on-surface/[0.03] transition-colors">
+                <span className="text-[24px] font-bold text-on-surface leading-none tabular-nums">{ratings.length}</span>
+                <span className="text-[12px] text-ink-3 mt-1.5 font-medium">rated</span>
               </button>
-            );
-          })}
+              <button type="button" onClick={() => navigate('/circle')} className="flex flex-col items-center text-center rounded-2xl py-3 hover:bg-on-surface/[0.03] transition-colors">
+                <span className="text-[24px] font-bold text-on-surface leading-none tabular-nums">{followers}</span>
+                <span className="text-[12px] text-ink-3 mt-1.5 font-medium">followers</span>
+              </button>
+              <button type="button" onClick={() => navigate('/circle')} className="flex flex-col items-center text-center rounded-2xl py-3 hover:bg-on-surface/[0.03] transition-colors">
+                <span className="text-[24px] font-bold text-on-surface leading-none tabular-nums">{following}</span>
+                <span className="text-[12px] text-ink-3 mt-1.5 font-medium">following</span>
+              </button>
+            </div>
+
+            {/* Action row */}
+            <div ref={createWrapRef} className="relative flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCreateMenuOpen((o) => !o)}
+                aria-haspopup="menu"
+                aria-expanded={createMenuOpen}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-full bg-primary text-white text-[13px] font-bold hover:bg-primary/90 transition-colors"
+              >
+                <Plus
+                  size={15}
+                  strokeWidth={2.5}
+                  className={cn('transition-transform duration-200', createMenuOpen && 'rotate-45')}
+                />
+                Create
+              </button>
+              <button
+                type="button"
+                onClick={openEditProfile}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-full bg-on-surface/[0.06] text-on-surface/80 text-[13px] font-bold hover:bg-on-surface/10 transition-colors"
+              >
+                <Edit3 size={14} />
+                Edit
+              </button>
+              <Link
+                to={publicProfilePath}
+                className="w-10 h-10 inline-flex items-center justify-center rounded-full bg-on-surface/[0.06] text-on-surface/55 hover:bg-on-surface/10 transition-colors"
+                aria-label="View public profile"
+              >
+                <Upload size={15} />
+              </Link>
+              <button
+                type="button"
+                onClick={openSettings}
+                className="w-10 h-10 inline-flex items-center justify-center rounded-full bg-on-surface/[0.06] text-on-surface/55 hover:bg-on-surface/10 transition-colors"
+                aria-label="Settings"
+              >
+                <Settings size={15} />
+              </button>
+
+              <AnimatePresence>
+                {createMenuOpen && (
+                  <motion.div
+                    role="menu"
+                    initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                    transition={{ duration: 0.14, ease: 'easeOut' }}
+                    className="absolute left-0 top-[calc(100%+0.25rem)] w-52 z-30 rounded-2xl bg-surface border border-on-surface/[0.08] shadow-[var(--shadow-card-hover)] overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { setCreateMenuOpen(false); openAddPostModal(); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-on-surface/[0.05] text-left"
+                    >
+                      <span className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                        <ImageIcon size={16} strokeWidth={2.2} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[14px] font-bold leading-tight">Post</span>
+                        <span className="block text-[11px] text-ink-3 leading-tight">Up to 15 photos & videos</span>
+                      </span>
+                    </button>
+                    <div className="border-t border-on-surface/[0.06]" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { setCreateMenuOpen(false); openAddReelModal(); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-on-surface/[0.05] text-left"
+                    >
+                      <span className="w-9 h-9 rounded-xl bg-on-surface/[0.06] text-on-surface flex items-center justify-center flex-shrink-0">
+                        <Film size={16} strokeWidth={2.2} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[14px] font-bold leading-tight">Reel</span>
+                        <span className="block text-[11px] text-ink-3 leading-tight">Single short video</span>
+                      </span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
+      </PageShell>
+
+      {/* ── Tab bar — Airbnb-style: capped underline tabs, left-aligned.
+          Each tab is `w-[120px]` max so it doesn't balloon to 275px
+          on a wide column. The underline indicator hugs the active
+          tab. ── */}
+      <div className="border-t border-on-surface/[0.08]">
+        <PageShell width="default">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-5 md:-mx-8 px-5 md:px-8">
+            {([
+              ['top', Star, 'Top'],
+              ['posts', LayoutGrid, 'Posts'],
+              ['reels', Film, 'Reels'],
+              ['rated', ListIcon, 'Rated'],
+            ] as const).map(([key, Icon, label]) => {
+              const isActive = activeTab === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setActiveTab(key)}
+                  className={cn(
+                    'relative w-[120px] flex-shrink-0 py-3 flex items-center justify-center gap-2 transition-colors',
+                    isActive ? 'text-on-surface' : 'text-ink-3 hover:text-on-surface',
+                  )}
+                >
+                  <Icon size={16} className={cn(isActive && key === 'top' && 'fill-on-surface')} />
+                  <span className="text-[13px] font-semibold">{label}</span>
+                  {isActive && (
+                    <span className="absolute -bottom-px inset-x-3 h-[2px] rounded-full bg-on-surface" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </PageShell>
       </div>
 
       {/* ── Tab content ───────────────────────────────────────────────── */}
-      <main className="px-5 pt-5">
+      <main className="max-w-6xl mx-auto w-full px-5 md:px-8 pt-6">
         {activeTab === 'top' && (
           ratings.length === 0 ? (
             <EmptyTabState
@@ -1147,7 +1167,7 @@ export const Profile: React.FC = () => {
           ) : (
             // Full-bleed strips: negative margin cancels the `main` pad
             // so cards run edge-to-edge during horizontal scroll.
-            <div className="-mx-5 space-y-7">
+            <div className="-mx-5 md:-mx-8 space-y-7">
               {visibleLists.map(({ config, items, total, avg }) => (
                 <Top10Section
                   key={topListKey(config)}
@@ -1168,7 +1188,7 @@ export const Profile: React.FC = () => {
               ))}
 
               {/* Edit top lists — opens the customization sheet. */}
-              <div className="px-5">
+              <div className="px-5 md:px-8">
                 <button
                   type="button"
                   onClick={() => setEditListsOpen(true)}
@@ -1182,10 +1202,10 @@ export const Profile: React.FC = () => {
               {/* Recommended guides — mock for now; "Explore" routes to
                   Discover where real guides live. */}
               <section>
-                <div className="px-5 flex items-start justify-between gap-3 mb-3">
+                <div className="px-5 md:px-8 flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0">
                     <h3 className="font-serif font-bold text-on-surface text-[20px] leading-tight">Recommended guides</h3>
-                    <p className="text-[12.5px] text-on-surface/45 mt-0.5">Curated by people you follow</p>
+                    <p className="text-[12.5px] text-ink-3 mt-0.5">Curated by people you follow</p>
                   </div>
                   <button
                     type="button"
@@ -1195,7 +1215,7 @@ export const Profile: React.FC = () => {
                     Explore <ChevronRight size={14} />
                   </button>
                 </div>
-                <div className="flex gap-4 overflow-x-auto px-5 pb-2 scrollbar-hide snap-x snap-mandatory">
+                <div className="flex gap-4 overflow-x-auto px-5 md:px-8 pb-2 scrollbar-hide snap-x snap-mandatory">
                   {MOCK_GUIDES.map((g) => (
                     <GuideCard key={g.id} guide={g} />
                   ))}
