@@ -95,8 +95,10 @@ const ScorePill: React.FC<{
   const has = count > 0;
   return (
     <div className={cn(
-      'flex flex-col gap-2 rounded-2xl px-3 py-3.5 transition-colors',
-      has ? 'bg-paper ring-1 ring-on-surface/[0.09]' : 'bg-on-surface/[0.03]',
+      'flex flex-col gap-2 rounded-2xl px-3 py-4 transition-colors',
+      has
+        ? 'bg-paper border border-on-surface/[0.06] shadow-[var(--shadow-card)]'
+        : 'bg-on-surface/[0.03] border border-on-surface/[0.04]',
     )}>
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface/55">
         <span className="opacity-70">{icon}</span>
@@ -426,7 +428,7 @@ export const RestaurantPanelBody: React.FC<{
         whole time. */
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll({ container: scrollRef });
-  const heroHeight = useTransform(scrollY, [0, 130], [204, 60], { clamp: true });
+  const heroHeight = useTransform(scrollY, [0, 130], [192, 60], { clamp: true });
   const mediaOpacity = useTransform(scrollY, [0, 80], [1, 0], { clamp: true });
   const expandedOpacity = useTransform(scrollY, [0, 60], [1, 0], { clamp: true });
   const expandedY = useTransform(scrollY, [0, 120], [0, -22], { clamp: true });
@@ -443,7 +445,7 @@ export const RestaurantPanelBody: React.FC<{
       )}
       {/* Header — map hero (or fallback photo/gradient) that collapses on
           scroll. The OUTER wrapper changes height to drive the layout
-          effect, but the media layer inside is pinned to a fixed 204px
+          effect, but the media layer inside is pinned to a fixed 192px
           height so Mapbox's ResizeObserver doesn't fire on every frame
           (resizing the canvas every scroll tick is what caused the
           glitchy collapse — the parent shrinks, the media clips
@@ -454,7 +456,7 @@ export const RestaurantPanelBody: React.FC<{
         style={{ height: heroHeight, willChange: 'height' }}
       >
         {/* Media layer — map (preferred) / image / gradient. Pinned to
-            the top with a fixed 204px height so its size never changes
+            the top with a fixed 192px height so its size never changes
             as the outer shrinks. The outer's overflow-hidden clips the
             bottom of the media as the hero collapses. Mapbox only
             sees one canvas resize (on mount). */}
@@ -470,20 +472,20 @@ export const RestaurantPanelBody: React.FC<{
             // The saturate filter quiets the cartography slightly so it
             // reads as warm gray rather than bright pastel.
             className="absolute inset-x-0 top-0 [&_.mapboxgl-ctrl-bottom-left]:hidden [&_.mapboxgl-ctrl-bottom-right]:hidden"
-            style={{ width: '100%', height: 204, opacity: mediaOpacity, filter: 'saturate(0.55)' }}
+            style={{ width: '100%', height: 192, opacity: mediaOpacity, filter: 'saturate(0.55)' }}
           />
         ) : snapshot.image ? (
           <motion.img
             src={snapshot.image}
             alt=""
             className="absolute inset-x-0 top-0 w-full object-cover"
-            style={{ height: 204, opacity: mediaOpacity }}
+            style={{ height: 192, opacity: mediaOpacity }}
             referrerPolicy="no-referrer"
           />
         ) : (
           <motion.div
             className="absolute inset-x-0 top-0 bg-gradient-to-br from-clay/30 to-olive/20 flex items-center justify-center text-on-surface/30"
-            style={{ height: 204, opacity: mediaOpacity }}
+            style={{ height: 192, opacity: mediaOpacity }}
           >
             <ImageOff size={28} />
           </motion.div>

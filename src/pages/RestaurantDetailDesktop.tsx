@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, Loader2,
   Navigation, ExternalLink, X, Users, UserCircle, Share2, Bookmark,
   DollarSign, CalendarDays, Tag, Image, Edit3, MessageCircle, Check, Send, Building2, TrendingUp, TrendingDown, StickyNote, ImageOff,
-  Car, Footprints,
+  Car, Footprints, Plus,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { scoreColor } from '../lib/score';
@@ -24,6 +24,18 @@ import { AddHotelDiningModal } from '../components/AddHotelDiningModal';
 import { PhotoGallery } from '../components/PhotoGallery';
 import { RestaurantFeaturedReels } from '../components/RestaurantFeaturedReels';
 import { Link } from 'react-router-dom';
+import { PageShell, SectionHeader } from '../components/ui';
+
+/**
+ * Boxed-card spec used by the "varied" treatment for sections that
+ * benefit from chrome (Flavor Profile, Visit History, Hours, mini-map
+ * card, hotel dining list). Pulls the shared `--shadow-card` ramp from
+ * Phase 0 so every elevated surface on the page lifts the same way.
+ * Sections without a `card` class render as editorial inline lists
+ * (no border, no fill) so the page reads as a magazine instead of five
+ * identical beige boxes stacked vertically.
+ */
+const BOXED_CARD = 'rounded-2xl bg-paper border border-on-surface/[0.06] shadow-[var(--shadow-card)]';
 
 /** Parse hours array to find next opening time when currently closed */
 function getNextOpenTime(hours: string[]): string {
@@ -103,6 +115,21 @@ export const RestaurantDetailDesktop: React.FC = () => {
   // locally so the shared hook can keep its collapsed default elsewhere.
   const [hoursOpen, setHoursOpen] = useState(false);
 
+  // Two-column layout kicks in at xl (>=1280px). Below that the page
+  // remains a single editorial column so 1024–1279 (sidebar takes ~264)
+  // doesn't end up with a cramped right rail. The map and hours render
+  // either in the right rail (xl+) or inline in the editorial column
+  // (<xl); a single mapContainerRef is bound to whichever slot mounts.
+  const [isXl, setIsXl] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1280px)');
+    const handler = (e: MediaQueryListEvent) => setIsXl(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   const { toggleWishlist, isWishlisted, getRating, openAddRestaurantModal } = useLists();
   const { conversations, sendMessage } = useChat();
   const { user } = useAuth();
@@ -177,8 +204,13 @@ export const RestaurantDetailDesktop: React.FC = () => {
   return (
     <div className="pb-16 bg-surface min-h-screen">
 
-      {/* ── Hero — wide cinematic banner ── */}
-      <div className="relative w-full aspect-[16/9] max-h-[65vh] overflow-hidden">
+      {/* ── Hero — wide cinematic banner. Capped at 520px on desktop so
+          the hero doesn't dominate above the fold; the page-cream
+          gradient at the bottom of the hero now reads via
+          --color-surface so it flips automatically in dark mode (was
+          hardcoded to #fff8f6, which never matched the new
+          --color-surface = #f6f5f2 in the first place). */}
+      <div className="relative w-full aspect-[16/9] max-h-[420px] lg:max-h-[520px] overflow-hidden">
         {photos.length > 0 ? (
           <button
             onClick={() => setGalleryOpen(true)}
@@ -200,10 +232,16 @@ export const RestaurantDetailDesktop: React.FC = () => {
           </div>
         )}
 
-        {/* Gradient — fades into page background */}
+        {/* Gradient — fades into page background. The page is bg-surface,
+            so the gradient ends in --color-surface; in dark mode this
+            flips automatically because the same token resolves to the
+            dark surface color. */}
         <div
           className="absolute inset-x-0 bottom-0 h-2/5 pointer-events-none"
-          style={{ background: 'linear-gradient(to top, #fff8f6 0%, #fff8f6 2%, rgba(255,248,246,0.85) 20%, rgba(255,248,246,0.4) 50%, transparent 100%)' }}
+          style={{
+            background:
+              'linear-gradient(to top, var(--color-surface) 0%, var(--color-surface) 2%, color-mix(in srgb, var(--color-surface) 85%, transparent) 20%, color-mix(in srgb, var(--color-surface) 40%, transparent) 50%, transparent 100%)',
+          }}
         />
 
         {/* Carousel arrows */}
@@ -274,19 +312,21 @@ export const RestaurantDetailDesktop: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Content — centered editorial column ──
-          max-w-5xl (1024px) gives a comfortable reading/browsing
-          width on 1440px+ monitors while still leaving generous
-          whitespace flanking the content. The only elements that
-          break out of this column are intentionally full-bleed
-          (the hero banner above). Every section below inherits
-          this width so nothing sprawls inconsistently. */}
-      <main className="px-6 lg:px-8 pt-6 max-w-5xl mx-auto">
+      {/* ── Content — PageShell caps the column at max-w-6xl with px-8
+          on desktop. On xl+ the page splits into a 2-column layout:
+          editorial content on the left, sticky action rail (score,
+          chips, rate/share buttons, hours preview, mini-map) on the
+          right. Below xl the page stays a single editorial column
+          and the rail's content surfaces in line. ── */}
+      <PageShell width="default">
+        <div className="pt-6 xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-12">
 
-        {/* ── Name + metadata — large serif name on the left, prominent
-            circular score badge floating on the right. Score shows the
-            user's personal rating if present, otherwise the community
-            average. ── */}
+        <main className="min-w-0">
+
+        {/* ── Name + metadata — large serif name on the left. On xl+
+            the score circle migrates to the sticky rail so it no
+            longer floats in negative space; on <xl it stays inline
+            and tighter (gap-6). ── */}
         {(() => {
           const badgeScore = myRating?.score ?? (communityStats.totalRatings > 0 ? communityStats.avgScore : null);
           const badgeIsPersonal = !!myRating;
@@ -295,13 +335,13 @@ export const RestaurantDetailDesktop: React.FC = () => {
             : '';
           return (
             <section className="mb-7">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/50 mb-2">
+              <p className="section-eyebrow mb-2">
                 {isHotel ? 'Hotel' : cuisine}
                 {!isHotel && priceStr && <> · {priceStr}</>}
               </p>
               <div className="flex items-start gap-6">
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-4xl lg:text-5xl font-serif font-bold text-on-surface leading-[1.05] tracking-tight">
+                  <h1 className="text-4xl lg:text-5xl font-serif font-medium text-on-surface leading-[1.05] tracking-tight">
                     {place.name}
                   </h1>
                   {(() => {
@@ -365,12 +405,12 @@ export const RestaurantDetailDesktop: React.FC = () => {
                 {badgeScore != null && (
                   <div
                     className={cn(
-                      'flex-shrink-0 w-20 h-20 rounded-full flex items-center justify-center shadow-sm',
+                      'flex-shrink-0 w-20 h-20 rounded-full flex items-center justify-center shadow-[var(--shadow-card)] xl:hidden',
                       badgeColor,
                     )}
                     aria-label={badgeIsPersonal ? `Your rating ${badgeScore.toFixed(1)}` : `Community rating ${badgeScore.toFixed(1)}`}
                   >
-                    <span className="text-[28px] font-serif font-bold text-white tabular-nums leading-none">
+                    <span className="text-[28px] font-serif font-medium text-white tabular-nums leading-none">
                       {badgeScore.toFixed(1)}
                     </span>
                   </div>
@@ -400,18 +440,17 @@ export const RestaurantDetailDesktop: React.FC = () => {
               });
             }
           }}
-          className="w-full mb-8 rounded-2xl px-5 py-4 flex items-center gap-4 text-left hover:brightness-110 transition-all"
-          style={{ backgroundColor: '#2f3425' }}
+          className="w-full mb-8 rounded-2xl px-5 py-4 flex items-center gap-4 text-left bg-secondary text-white hover:bg-secondary/90 transition-colors"
         >
           {myRating ? (
             <>
               <div
                 className={cn(
                   'flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
-                  myRating.score >= 8 ? 'bg-[#d4a373]' : myRating.score >= 5 ? 'bg-amber-500' : 'bg-red-400',
+                  myRating.score >= 8 ? 'bg-accent' : myRating.score >= 5 ? 'bg-amber-500' : 'bg-red-400',
                 )}
               >
-                <span className="text-base font-serif font-bold text-[#2f3425] tabular-nums leading-none">
+                <span className="text-base font-serif font-bold text-secondary tabular-nums leading-none">
                   {myRating.score.toFixed(1)}
                 </span>
               </div>
@@ -433,8 +472,8 @@ export const RestaurantDetailDesktop: React.FC = () => {
             </>
           ) : (
             <>
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-[#d4a373]/90 flex items-center justify-center">
-                <Star size={20} className="text-[#2f3425]" />
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-accent/90 flex items-center justify-center">
+                <Star size={20} className="text-secondary" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/55">
@@ -451,8 +490,9 @@ export const RestaurantDetailDesktop: React.FC = () => {
 
         {/* ── Action row — Call, Route, Web, Share.
             Circular outlined icon buttons, Apple-Maps-style. Muted when
-            the underlying data isn't available. ── */}
-        <div className="grid grid-cols-4 gap-4 mb-10 max-w-md">
+            the underlying data isn't available. Hidden on xl+ because
+            the sticky rail surfaces these as a compact 4-button grid. ── */}
+        <div className="grid grid-cols-4 gap-4 mb-10 max-w-md xl:hidden">
           {place.phone ? (
             <a
               href={`tel:${place.phone}`}
@@ -543,7 +583,13 @@ export const RestaurantDetailDesktop: React.FC = () => {
           const hasExperts = expertCount > 0;
           const hasGoogle = Number(place.rating) > 0 && place.userRatingCount > 0;
 
-          const Box = ({ label, score, count, countLabel, emptyCopy, onClick }: {
+          /* Editorial inline-stat treatment — no boxes. Three score
+             columns with the eyebrow label above and the score as a
+             large Fraunces number below, separated by a top hairline
+             that runs the width of the section. Vary-the-chrome
+             decision: this section reads as a magazine stat block
+             instead of three identical beige cards. */
+          const Stat = ({ label, score, count, countLabel, emptyCopy, onClick }: {
             label: string;
             score: number | null;
             count: number;
@@ -552,82 +598,83 @@ export const RestaurantDetailDesktop: React.FC = () => {
             onClick?: () => void;
           }) => {
             const body = (
-              <>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/50 mb-3">
-                  {label}
-                </p>
+              <div className="text-left py-4">
+                <p className="section-eyebrow text-[10px]">{label}</p>
                 {score != null ? (
                   <>
-                    <p className={cn('text-[44px] font-serif font-bold leading-none tabular-nums', scoreColor(score))}>
+                    <p className={cn('mt-2 text-[44px] font-serif font-medium leading-none tabular-nums tracking-tight', scoreColor(score))}>
                       {score.toFixed(1)}
                     </p>
-                    <p className="mt-2 text-sm text-on-surface/55">
+                    <p className="mt-2 text-sm text-ink-3">
                       {count.toLocaleString()} {countLabel}
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="text-[44px] font-serif font-bold leading-none text-on-surface/15 tabular-nums">—</p>
-                    <p className="mt-2 text-sm italic text-on-surface/40 leading-snug">
-                      {emptyCopy}
-                    </p>
+                    <p className="mt-2 text-[44px] font-serif font-medium leading-none text-on-surface/15 tabular-nums">—</p>
+                    <p className="mt-2 text-sm italic text-ink-3 leading-snug">{emptyCopy}</p>
                   </>
                 )}
-              </>
+              </div>
             );
-            const classes = 'rounded-2xl bg-white/60 border border-on-surface/10 px-5 py-5 text-left';
             return onClick ? (
-              <button type="button" onClick={onClick} className={cn(classes, 'hover:bg-white transition-colors')}>
+              <button type="button" onClick={onClick} className="text-left hover:bg-on-surface/[0.02] -mx-3 px-3 rounded-2xl transition-colors">
                 {body}
               </button>
             ) : (
-              <div className={classes}>{body}</div>
+              <div>{body}</div>
             );
           };
 
           return (
             <section className="mb-12">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/45 mb-1.5">
-                The Community Says
-              </p>
-              <h2 className="text-[28px] font-serif font-bold text-on-surface leading-tight mb-5">
-                {!hasCommunity && !hasFriends && !hasExperts ? 'No ratings yet' : 'Scores across your network'}
-              </h2>
-
-              <div className={cn('grid gap-4', isHotel ? 'grid-cols-1' : 'grid-cols-3')}>
-                <Box
-                  label={isHotel ? 'Breakfast' : 'Everyone'}
-                  score={hasCommunity ? communityStats.avgScore : null}
-                  count={communityStats.totalRatings}
-                  countLabel={communityStats.totalRatings === 1 ? 'rating' : 'ratings'}
-                  emptyCopy="Be the first"
-                />
-                {!isHotel && (
-                  <Box
-                    label="Friends"
-                    score={hasFriends ? friendsStats.avgScore : null}
-                    count={friendsStats.totalRatings}
-                    countLabel={friendsStats.totalRatings === 1 ? 'rating' : 'ratings'}
-                    emptyCopy="No friends yet"
-                    onClick={hasFriends ? () => setShowFriendsDetail(true) : undefined}
+              <SectionHeader
+                eyebrow="The community says"
+                title={!hasCommunity && !hasFriends && !hasExperts ? 'No ratings yet' : 'Scores across your network'}
+              />
+              <div className={cn(
+                'grid gap-x-8 border-t border-on-surface/[0.08] divide-y sm:divide-y-0 sm:divide-x divide-on-surface/[0.06]',
+                isHotel ? 'grid-cols-1' : 'sm:grid-cols-3',
+              )}>
+                <div className="sm:pl-0 sm:pr-8">
+                  <Stat
+                    label={isHotel ? 'Breakfast' : 'Everyone'}
+                    score={hasCommunity ? communityStats.avgScore : null}
+                    count={communityStats.totalRatings}
+                    countLabel={communityStats.totalRatings === 1 ? 'rating' : 'ratings'}
+                    emptyCopy="Be the first"
                   />
+                </div>
+                {!isHotel && (
+                  <div className="sm:px-8">
+                    <Stat
+                      label="Friends"
+                      score={hasFriends ? friendsStats.avgScore : null}
+                      count={friendsStats.totalRatings}
+                      countLabel={friendsStats.totalRatings === 1 ? 'rating' : 'ratings'}
+                      emptyCopy="No friends yet"
+                      onClick={hasFriends ? () => setShowFriendsDetail(true) : undefined}
+                    />
+                  </div>
                 )}
                 {!isHotel && (
-                  <Box
-                    label="Experts"
-                    score={hasExperts ? expertAvg : null}
-                    count={expertCount}
-                    countLabel={expertCount === 1 ? 'rating' : 'ratings'}
-                    emptyCopy="No expert picks"
-                  />
+                  <div className="sm:px-8 sm:pr-0">
+                    <Stat
+                      label="Experts"
+                      score={hasExperts ? expertAvg : null}
+                      count={expertCount}
+                      countLabel={expertCount === 1 ? 'rating' : 'ratings'}
+                      emptyCopy="No expert picks"
+                    />
+                  </div>
                 )}
               </div>
 
               {hasGoogle && (
-                <p className="mt-4 text-sm text-on-surface/40">
-                  <span className="text-on-surface/50">Google:</span>{' '}
-                  <span className="tabular-nums font-medium text-on-surface/60">{place.rating}</span>
-                  <span className="ml-1 text-on-surface/35">({formatReviewCount(place.userRatingCount)} reviews)</span>
+                <p className="mt-4 text-sm text-ink-3">
+                  <span className="text-ink-2">Google:</span>{' '}
+                  <span className="tabular-nums font-medium text-on-surface/75">{place.rating}</span>
+                  <span className="ml-1 text-ink-3">({formatReviewCount(place.userRatingCount)} reviews)</span>
                 </p>
               )}
             </section>
@@ -653,13 +700,8 @@ export const RestaurantDetailDesktop: React.FC = () => {
           const topFlavorNames = new Set(ranked.slice(0, 3).map((f) => f.subject));
           return (
             <section className="mb-12">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/45 mb-1.5">
-                Flavor Profile
-              </p>
-              <h2 className="text-[28px] font-serif font-bold text-on-surface leading-tight mb-5">
-                What people taste here
-              </h2>
-              <div className="rounded-2xl bg-white/60 border border-on-surface/10 px-6 py-6">
+              <SectionHeader eyebrow="Flavor profile" title="What people taste here" />
+              <div className={cn(BOXED_CARD, 'px-6 py-6')}>
                 <div className="flex items-center gap-8">
                   <RadarChart
                     data={flavorData}
@@ -676,7 +718,7 @@ export const RestaurantDetailDesktop: React.FC = () => {
                           key={f.subject}
                           className={cn(
                             'flex items-baseline justify-between gap-3',
-                            isTop ? 'text-base font-bold text-on-surface' : 'text-sm text-on-surface/55',
+                            isTop ? 'text-base font-bold text-on-surface' : 'text-sm text-ink-3',
                           )}
                         >
                           <span className="truncate">{f.subject}</span>
@@ -700,30 +742,28 @@ export const RestaurantDetailDesktop: React.FC = () => {
           const topFriends = friendsStats.ratings.slice(0, 3);
           return (
             <section className="mb-12">
-              <div className="flex items-end justify-between mb-5">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/45 mb-1.5">
-                    Your Circle
-                  </p>
-                  <h2 className="text-[28px] font-serif font-bold text-on-surface leading-tight">
-                    {hasFriends
-                      ? `${friendsStats.totalRatings} friend${friendsStats.totalRatings === 1 ? '' : 's'} rated here`
-                      : 'No friends yet'}
-                  </h2>
-                </div>
-                {hasFriends && friendsStats.ratings.length > topFriends.length && (
+              <SectionHeader
+                eyebrow="Your circle"
+                title={hasFriends
+                  ? `${friendsStats.totalRatings} friend${friendsStats.totalRatings === 1 ? '' : 's'} rated here`
+                  : 'No friends yet'}
+                action={hasFriends && friendsStats.ratings.length > topFriends.length ? (
                   <button
                     type="button"
                     onClick={() => setShowFriendsDetail(true)}
-                    className="text-sm font-medium text-accent hover:opacity-70 transition-opacity flex-shrink-0"
+                    className="inline-flex items-center gap-1 text-[12px] font-bold uppercase tracking-[0.14em] text-primary hover:text-primary/80 transition-colors"
                   >
-                    See all
+                    See all <ChevronRight size={12} strokeWidth={2.5} />
                   </button>
-                )}
-              </div>
+                ) : undefined}
+              />
 
               {hasFriends ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                /* Editorial inline-card grid — borderless tiles divided
+                   by hairlines instead of beige boxes. Bumped to 3-col
+                   at lg per Phase 3 brief so 1024–1279 doesn't waste
+                   half the column. */
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
                   {topFriends.map((r) => {
                     const prof = friendReviewProfiles[r.user_id];
                     const name = prof?.display_name || 'Friend';
@@ -736,7 +776,7 @@ export const RestaurantDetailDesktop: React.FC = () => {
                         key={r.id}
                         type="button"
                         onClick={() => navigate(`/review/${r.id}`)}
-                        className="rounded-2xl bg-white/60 border border-on-surface/10 px-4 py-4 text-left hover:bg-white transition-colors"
+                        className="text-left rounded-2xl px-3 py-3 hover:bg-on-surface/[0.025] transition-colors -mx-3"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -745,22 +785,15 @@ export const RestaurantDetailDesktop: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <p className="text-base font-bold text-on-surface truncate">{name}</p>
                             {visitLabel && (
-                              <p className="text-xs text-on-surface/50">
+                              <p className="text-xs text-ink-3">
                                 Visited {visitLabel}
                               </p>
                             )}
                           </div>
-                          <div className={cn(
-                            'flex-shrink-0 w-12 h-8 rounded-md flex items-center justify-center',
-                            Number(r.score) >= 8 ? 'bg-secondary' : Number(r.score) >= 5 ? 'bg-amber-600' : 'bg-red-500',
-                          )}>
-                            <span className="text-sm font-bold text-white tabular-nums">
-                              {Number(r.score).toFixed(1)}
-                            </span>
-                          </div>
+                          <ScoreBadge rating={Number(r.score)} size="sm" />
                         </div>
                         {r.notes && (
-                          <p className="mt-2.5 text-sm italic font-serif text-on-surface/70 leading-snug line-clamp-2">
+                          <p className="mt-2.5 text-sm italic font-serif text-ink-2 leading-snug line-clamp-2">
                             "{r.notes}"
                           </p>
                         )}
@@ -769,9 +802,9 @@ export const RestaurantDetailDesktop: React.FC = () => {
                   })}
                 </div>
               ) : (
-                <div className="rounded-2xl bg-white/60 border border-on-surface/10 px-6 py-8 text-center">
+                <div className="rounded-2xl bg-on-surface/[0.03] px-6 py-8 text-center">
                   <Users size={22} className="mx-auto text-on-surface/25 mb-2" />
-                  <p className="text-sm text-on-surface/55">
+                  <p className="text-sm text-ink-2">
                     No friends have rated this yet
                   </p>
                   <button
@@ -805,21 +838,18 @@ export const RestaurantDetailDesktop: React.FC = () => {
             hotel. Matches the page's section header pattern. ── */}
         {isHotel && (
           <section className="mb-12">
-            <div className="flex items-end justify-between mb-5">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/45 mb-1.5">
-                  Hotel Dining
-                </p>
-                <h2 className="text-[28px] font-serif font-bold text-on-surface leading-tight">
-                  Eat and drink on site
-                </h2>
-              </div>
-              {user?.id && (
-                <button onClick={() => setAddDiningOpen(true)} className="text-sm font-medium text-accent hover:opacity-70 transition-opacity flex-shrink-0">
-                  + Add
+            <SectionHeader
+              eyebrow="Hotel dining"
+              title="Eat and drink on site"
+              action={user?.id ? (
+                <button
+                  onClick={() => setAddDiningOpen(true)}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.14em] text-primary hover:text-primary/80 transition-colors"
+                >
+                  <Plus size={12} strokeWidth={2.5} /> Add
                 </button>
-              )}
-            </div>
+              ) : undefined}
+            />
 
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-3 -mx-1 px-1">
               {([{ value: 'all' as const, label: 'All' }, { value: 'restaurant' as const, label: 'Restaurants' }, { value: 'breakfast' as const, label: 'Breakfast' }, { value: 'bar' as const, label: 'Bars' }, { value: 'room_service' as const, label: 'Room Service' }, { value: 'pool_bar' as const, label: 'Pool Bar' }, { value: 'rooftop' as const, label: 'Rooftop' }] as const).map((f) => (
@@ -833,12 +863,12 @@ export const RestaurantDetailDesktop: React.FC = () => {
             </div>
 
             {hotelDiningOptions.length === 0 ? (
-              <div className="rounded-2xl bg-white/60 border border-on-surface/10 py-10 text-center">
+              <div className={cn(BOXED_CARD, 'py-10 text-center')}>
                 <Building2 size={24} className="mx-auto text-on-surface/20 mb-2" />
-                <p className="text-sm text-on-surface/45">No dining options added yet</p>
+                <p className="text-sm text-ink-3">No dining options added yet</p>
               </div>
             ) : (
-              <ul className="rounded-2xl bg-white/60 border border-on-surface/10 divide-y divide-on-surface/[0.06] overflow-hidden">
+              <ul className={cn(BOXED_CARD, 'divide-y divide-on-surface/[0.06] overflow-hidden')}>
                 {hotelDiningOptions
                   .filter((d) => diningFilter === 'all' || d.dining_type === diningFilter)
                   .map((d) => {
@@ -903,22 +933,18 @@ export const RestaurantDetailDesktop: React.FC = () => {
           const dateLabel = hasDate ? new Date(myRating.visitDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null;
           return (
             <section ref={myRatingRef} className="mb-12 scroll-mt-4">
-              <div className="flex items-end justify-between mb-5">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/45 mb-1.5">
-                    My Rating
-                  </p>
-                  <h2 className="text-[28px] font-serif font-bold text-on-surface leading-tight">
-                    Your take on it
-                  </h2>
-                </div>
-                <button
-                  onClick={() => openAt('main')}
-                  className="flex items-center gap-1 text-sm font-medium text-accent hover:opacity-70 transition-opacity flex-shrink-0"
-                >
-                  <Edit3 size={14} /> Edit
-                </button>
-              </div>
+              <SectionHeader
+                eyebrow="My rating"
+                title="Your take on it"
+                action={
+                  <button
+                    onClick={() => openAt('main')}
+                    className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.14em] text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <Edit3 size={12} /> Edit
+                  </button>
+                }
+              />
 
               <div className="space-y-6">
                 {/* Notes */}
@@ -1151,14 +1177,11 @@ export const RestaurantDetailDesktop: React.FC = () => {
 
           return (
             <section className="mb-12">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/45 mb-1.5">
-                Visit History
-              </p>
-              <h2 className="text-[28px] font-serif font-bold text-on-surface leading-tight mb-5">
-                Your {entries.length} {entries.length === 1 ? 'visit' : 'visits'}
-              </h2>
-
-              <ul className="rounded-2xl bg-white/60 border border-on-surface/10 divide-y divide-on-surface/[0.06] overflow-hidden">
+              <SectionHeader
+                eyebrow="Visit history"
+                title={`Your ${entries.length} ${entries.length === 1 ? 'visit' : 'visits'}`}
+              />
+              <ul className={cn(BOXED_CARD, 'divide-y divide-on-surface/[0.06] overflow-hidden')}>
                 {entries.map((e) => {
                   const isExpanded = expandedVisit === e.id;
                   const month = e.date ? MONTHS[e.date.getMonth()] : '—';
@@ -1254,13 +1277,11 @@ export const RestaurantDetailDesktop: React.FC = () => {
             there are no expert ratings. ── */}
         {expertRecommendations.length > 0 && (
           <section className="mb-12">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/45 mb-1.5">
-              Expert Picks
-            </p>
-            <h2 className="text-[28px] font-serif font-bold text-on-surface leading-tight mb-5">
-              {expertRecommendations.length === 1 ? 'An expert weighed in' : `${expertRecommendations.length} experts weighed in`}
-            </h2>
-            <ul className="rounded-2xl bg-white/60 border border-on-surface/10 divide-y divide-on-surface/[0.06] overflow-hidden">
+            <SectionHeader
+              eyebrow="Expert picks"
+              title={expertRecommendations.length === 1 ? 'An expert weighed in' : `${expertRecommendations.length} experts weighed in`}
+            />
+            <ul className="divide-y divide-on-surface/[0.06] border-t border-on-surface/[0.08]">
               {expertRecommendations.map((rec) => {
                 const isExpanded = expandedExpertId === rec.id;
                 return (
@@ -1332,16 +1353,13 @@ export const RestaurantDetailDesktop: React.FC = () => {
           className="mb-12"
         />
 
-        {/* ── Hours — accordion inside a subtle container. ── */}
+        {/* ── Hours — accordion inside a subtle container. Hidden on
+            xl+ because the right rail surfaces today's hours + open
+            status as a quick preview. ── */}
         {place.hours.length > 0 && (
-          <section className="mb-12">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/45 mb-1.5">
-              Hours
-            </p>
-            <h2 className="text-[28px] font-serif font-bold text-on-surface leading-tight mb-5">
-              When they're open
-            </h2>
-            <div className="rounded-2xl bg-white/60 border border-on-surface/10 overflow-hidden">
+          <section className="mb-12 xl:hidden">
+            <SectionHeader eyebrow="Hours" title="When they're open" />
+            <div className={cn(BOXED_CARD, 'overflow-hidden')}>
               <button
                 onClick={() => setHoursOpen(!hoursOpen)}
                 className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-on-surface/[0.015] transition-colors"
@@ -1393,16 +1411,11 @@ export const RestaurantDetailDesktop: React.FC = () => {
           </section>
         )}
 
-        {/* ── Contact & Address — quiet, functional. Muted icon + text
-            rows in a subtle container, not competing for attention. ── */}
+        {/* ── Contact & Address — editorial inline list. No chrome —
+            the iconography + hairlines do the work. ── */}
         <section className="mb-12">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/45 mb-1.5">
-            Contact
-          </p>
-          <h2 className="text-[28px] font-serif font-bold text-on-surface leading-tight mb-5">
-            Get in touch
-          </h2>
-          <ul className="rounded-2xl bg-white/60 border border-on-surface/10 divide-y divide-on-surface/[0.06] overflow-hidden">
+          <SectionHeader eyebrow="Contact" title="Get in touch" />
+          <ul className="divide-y divide-on-surface/[0.06] border-t border-on-surface/[0.08]">
             {place.phone && (
               <li>
                 <a href={`tel:${place.phone}`} className="flex items-center gap-3 px-5 py-4 hover:bg-on-surface/[0.015] transition-colors">
@@ -1430,65 +1443,271 @@ export const RestaurantDetailDesktop: React.FC = () => {
           </ul>
         </section>
 
-        {/* ── Map — rounded container with caption below. A transparent
-            overlay button catches taps and routes to /map with the
-            restaurant focused. Inline width/height keep the Mapbox
-            canvas full-sized; see Map.tsx for context. ── */}
-        <section className="mb-12">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface/45 mb-1.5">
-            Location
-          </p>
-          <h2 className="text-[28px] font-serif font-bold text-on-surface leading-tight mb-5">
-            Where to find it
-          </h2>
-          <div className="rounded-2xl overflow-hidden border border-on-surface/10">
-            {/* h-96 (384px) gives a comfortable aspect ratio on desktop
-                while staying shorter than the old 448px to leave room
-                for other sections in view. */}
-            <div className="relative w-full h-96">
-              <div
-                ref={mapContainerRef}
-                className="absolute inset-0"
-                style={{ width: '100%', height: '100%' }}
-              />
-              <button
-                type="button"
-                onClick={() => navigate('/map', {
-                  state: {
-                    focus: {
-                      id: place.id,
-                      name: place.name,
-                      lat: place.lat,
-                      lng: place.lng,
-                      address: place.fullAddress || place.address,
-                      fullAddress: place.fullAddress || place.address,
-                      photoUrl: place.photoUrl,
-                      priceLevel: place.priceLevel,
-                      rating: place.rating,
-                      types: place.types,
-                      userRatingCount: place.userRatingCount,
+        {/* ── Map — rounded container with caption below. Hidden on
+            xl+ because the right rail mounts the map inline next to
+            the action stack. The mapContainerRef belongs to whichever
+            slot is currently mounted; the isXl effect re-runs on a
+            viewport cross so Mapbox rebinds cleanly. ── */}
+        {!isXl && (
+          <section className="mb-12">
+            <SectionHeader eyebrow="Location" title="Where to find it" />
+            <div className={cn(BOXED_CARD, 'overflow-hidden')}>
+              <div className="relative w-full h-96">
+                <div
+                  ref={mapContainerRef}
+                  className="absolute inset-0"
+                  style={{ width: '100%', height: '100%' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => navigate('/map', {
+                    state: {
+                      focus: {
+                        id: place.id,
+                        name: place.name,
+                        lat: place.lat,
+                        lng: place.lng,
+                        address: place.fullAddress || place.address,
+                        fullAddress: place.fullAddress || place.address,
+                        photoUrl: place.photoUrl,
+                        priceLevel: place.priceLevel,
+                        rating: place.rating,
+                        types: place.types,
+                        userRatingCount: place.userRatingCount,
+                      },
                     },
-                  },
-                })}
-                aria-label="Open full map"
-                className="absolute inset-0 z-10 hover:bg-on-surface/5 transition-colors"
-              />
+                  })}
+                  aria-label="Open full map"
+                  className="absolute inset-0 z-10 hover:bg-on-surface/5 transition-colors"
+                />
+              </div>
+              <div className="px-5 py-3 flex items-center justify-between gap-3 bg-on-surface/[0.02] border-t border-on-surface/[0.06]">
+                <p className="text-sm text-ink-3 truncate flex-1">{place.address}</p>
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sm font-semibold text-primary flex-shrink-0"
+                >
+                  Open in Maps
+                  <ExternalLink size={13} />
+                </a>
+              </div>
             </div>
-            <div className="px-5 py-3 flex items-center justify-between gap-3 bg-white/60 border-t border-on-surface/[0.06]">
-              <p className="text-sm text-on-surface/55 truncate flex-1">{place.address}</p>
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm font-semibold text-primary flex-shrink-0"
-              >
-                Open in Maps
-                <ExternalLink size={13} />
-              </a>
-            </div>
+          </section>
+        )}
+        </main>
+
+        {/* ── Sticky right rail (xl+ only) — actions, hours, mini-map. ── */}
+        <aside className="hidden xl:block">
+          <div className="sticky top-24 space-y-6">
+            {(() => {
+              const badgeScore = myRating?.score ?? (communityStats.totalRatings > 0 ? communityStats.avgScore : null);
+              const badgeIsPersonal = !!myRating;
+              const badgeColor = badgeScore != null
+                ? (badgeScore >= 8 ? 'bg-secondary' : badgeScore >= 5 ? 'bg-amber-600' : 'bg-red-500')
+                : '';
+              return (
+                <div className={cn(BOXED_CARD, 'p-5 space-y-4')}>
+                  {/* Score + chips */}
+                  <div className="flex items-start gap-4">
+                    {badgeScore != null && (
+                      <div
+                        className={cn(
+                          'flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center shadow-[var(--shadow-card)]',
+                          badgeColor,
+                        )}
+                        aria-label={badgeIsPersonal ? `Your rating ${badgeScore.toFixed(1)}` : `Community rating ${badgeScore.toFixed(1)}`}
+                      >
+                        <span className="text-[22px] font-serif font-medium text-white tabular-nums leading-none">
+                          {badgeScore.toFixed(1)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1 pt-1">
+                      <p className="section-eyebrow text-[10px]">
+                        {badgeIsPersonal ? 'Your score' : 'Community'}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {cuisine && (
+                          <span className="inline-flex items-center h-7 px-3 rounded-full bg-on-surface/[0.05] text-[12px] font-medium">
+                            {isHotel ? 'Hotel' : cuisine}
+                          </span>
+                        )}
+                        {!isHotel && priceStr && (
+                          <span className="inline-flex items-center h-7 px-3 rounded-full bg-on-surface/[0.05] text-[12px] font-medium">
+                            {priceStr}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Primary actions — Rate / Save / Share */}
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (myRating) {
+                          myRatingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                          openAddRestaurantModal({
+                            id: place.id, name: place.name,
+                            image: place.photoUrl || '',
+                            cuisine, price: priceStr,
+                            address: place.fullAddress || place.address,
+                          });
+                        }
+                      }}
+                      className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-2xl bg-primary text-white hover:bg-primary/90 transition-colors"
+                    >
+                      <Star size={16} className={myRating ? 'fill-white' : ''} />
+                      <span className="text-[11px] font-semibold">{myRating ? 'Edit' : 'Rate'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleWishlist({
+                        id: place.id, name: place.name,
+                        image: place.photoUrl || '',
+                        cuisine, price: priceStr,
+                        address: place.fullAddress || place.address,
+                      })}
+                      className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-2xl bg-on-surface/[0.04] hover:bg-on-surface/[0.08] transition-colors"
+                    >
+                      <Bookmark size={16} className={isWishlisted(place.id) ? 'fill-on-surface' : ''} />
+                      <span className="text-[11px] font-semibold">{isWishlisted(place.id) ? 'Saved' : 'Save'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChatShareTarget({
+                        restaurantId: place.id,
+                        name: place.name,
+                        image: place.photoUrl || '',
+                        cuisine,
+                        price: priceStr,
+                        address: place.fullAddress || place.address,
+                        ...(myRating ? {
+                          score: myRating.score,
+                          notes: myRating.notes,
+                          wouldReturn: myRating.wouldReturn,
+                          tags: myRating.tags,
+                          isReview: true,
+                        } : { isReview: false }),
+                      })}
+                      className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-2xl bg-on-surface/[0.04] hover:bg-on-surface/[0.08] transition-colors"
+                    >
+                      <Send size={16} />
+                      <span className="text-[11px] font-semibold">Share</span>
+                    </button>
+                  </div>
+
+                  {/* Hours preview */}
+                  {place.hours.length > 0 && place.isOpen !== null && (
+                    <div className="border-t border-on-surface/[0.06] pt-4">
+                      <p className="section-eyebrow text-[10px] mb-2">Hours</p>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className={cn('inline-block w-2 h-2 rounded-full flex-shrink-0', place.isOpen ? 'bg-green-500' : 'bg-red-500')} />
+                        <span className={cn('font-semibold flex-shrink-0', place.isOpen ? 'text-green-700' : 'text-red-600')}>
+                          {place.isOpen ? 'Open' : 'Closed'}
+                        </span>
+                        <span className="text-ink-3 truncate">· {getTodayHours(place.hours)}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick contact strip */}
+                  <div className="grid grid-cols-3 gap-2 border-t border-on-surface/[0.06] pt-4">
+                    {place.phone ? (
+                      <a
+                        href={`tel:${place.phone}`}
+                        className="flex flex-col items-center gap-1 py-2 rounded-2xl hover:bg-on-surface/[0.04] transition-colors"
+                      >
+                        <Phone size={15} className="text-on-surface" />
+                        <span className="text-[11px] font-semibold text-ink-2">Call</span>
+                      </a>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 py-2 opacity-35">
+                        <Phone size={15} />
+                        <span className="text-[11px] font-semibold">Call</span>
+                      </div>
+                    )}
+                    {place.website ? (
+                      <a
+                        href={place.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex flex-col items-center gap-1 py-2 rounded-2xl hover:bg-on-surface/[0.04] transition-colors"
+                      >
+                        <Globe size={15} className="text-on-surface" />
+                        <span className="text-[11px] font-semibold text-ink-2">Web</span>
+                      </a>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 py-2 opacity-35">
+                        <Globe size={15} />
+                        <span className="text-[11px] font-semibold">Web</span>
+                      </div>
+                    )}
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center gap-1 py-2 rounded-2xl hover:bg-on-surface/[0.04] transition-colors"
+                    >
+                      <ExternalLink size={15} className="text-on-surface" />
+                      <span className="text-[11px] font-semibold text-ink-2">Maps</span>
+                    </a>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Mini map + directions CTA */}
+            {isXl && (
+              <div className={cn(BOXED_CARD, 'overflow-hidden')}>
+                <div className="relative w-full h-48">
+                  <div
+                    ref={mapContainerRef}
+                    className="absolute inset-0"
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => navigate('/map', {
+                      state: {
+                        focus: {
+                          id: place.id,
+                          name: place.name,
+                          lat: place.lat,
+                          lng: place.lng,
+                          address: place.fullAddress || place.address,
+                          fullAddress: place.fullAddress || place.address,
+                          photoUrl: place.photoUrl,
+                          priceLevel: place.priceLevel,
+                          rating: place.rating,
+                          types: place.types,
+                          userRatingCount: place.userRatingCount,
+                        },
+                      },
+                    })}
+                    aria-label="Open full map"
+                    className="absolute inset-0 z-10 hover:bg-on-surface/5 transition-colors"
+                  />
+                </div>
+                <a
+                  href={directionsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 px-5 py-3 border-t border-on-surface/[0.06] text-sm font-semibold text-primary hover:bg-on-surface/[0.02] transition-colors"
+                >
+                  <Navigation size={14} />
+                  Get directions
+                </a>
+              </div>
+            )}
           </div>
-        </section>
-      </main>
+        </aside>
+        </div>
+      </PageShell>
 
       {/* Photo Gallery Modal */}
       <AnimatePresence>

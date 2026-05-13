@@ -289,13 +289,88 @@ All three Recommended states share one header so refresh button and "View all" l
 
 ---
 
+## Phase 3 — Restaurant Detail (Desktop)
+
+### Layout
+
+| Change | Decision | Why |
+|---|---|---|
+| Page wrap | Wrapped main content in `<PageShell width="default">` (max-w-6xl px-8). Was `max-w-5xl px-6 lg:px-8 mx-auto`. | One canonical width across the app; matches Discover and the rest of the sidebar layout. |
+| Two-column on `xl+` | `xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-12`. Left = editorial content; right = sticky action rail (`sticky top-24`). Breakpoint is `xl` (1280px) — below that the page reverts to one column so 1024–1279 doesn't end up cramped. | Brief option (b). The single 1024px narrow column was the source of the "lonely action grid" + "page-wide gray box monotony" problems. |
+| Mini-map binding | A single `mapContainerRef` is bound to either the rail's mini-map (xl+, 192px tall) or the inline Location section (<xl, 384px tall) — never both. The `isXl` state drives which slot mounts; Mapbox rebinds on viewport cross. | Avoids double-ref conflicts and the cost of running two Mapbox instances. |
+
+### Hero
+
+| Change | Decision | Why |
+|---|---|---|
+| Max height | `max-h-[65vh]` → `max-h-[420px] lg:max-h-[520px]`. | Brief: stop the hero from dominating above the fold. 520px on desktop is the upper bound; 420px on tablet keeps the hero proportional below xl. |
+| Gradient | `linear-gradient(... #fff8f6 ...)` (a hardcoded hex that no longer matched `--color-surface = #f6f5f2`) → CSS variable gradient using `var(--color-surface)` and `color-mix()`. | Token-driven; flips automatically in dark mode. |
+
+### Name + score row
+
+| Change | Decision | Why |
+|---|---|---|
+| Score circle on xl+ | Hidden on xl+ (the rail card hosts a 64px score badge instead). | Brief: "move the score into the sticky right rail entirely." Solves the floating-in-negative-space issue. |
+| Score circle on <xl | Kept inline, now uses `shadow-[var(--shadow-card)]` instead of `shadow-sm`. Font weight `bold` → `medium` to match the canonical Fraunces weight. | Phase 0 shadow ramp + canonical typography weight. |
+| Eyebrow | Inline `text-xs font-bold uppercase tracking-[0.18em]` → `.section-eyebrow` class (12px / 0.14em / Mono 700). | Tracking-value migration to the locked 0.14em. |
+
+### Section chrome — varied treatment
+
+Replaced "five identical beige boxes stacked vertically" with three distinct treatments:
+
+| Treatment | Sections |
+|---|---|
+| **Boxed card** (`BOXED_CARD` = `rounded-2xl bg-paper border border-on-surface/[0.06] shadow-[var(--shadow-card)]`) | Flavor Profile, Hotel Dining list, Visit History (the editorial date-rail card kept its signature voice), Hours accordion, mini-map card. |
+| **Editorial inline list** (border-top hairline + `divide-y`) | Expert Picks, Contact. Extends the Visit History "editorial moment" voice across the page. |
+| **Inline cards / no chrome** | Your Circle (friend reviews — boxes dropped, hairline hover-card treatment), My Rating Details (already inline), The Community Says (3-col inline stat block with hairline dividers between columns, no boxes). |
+
+The `BOXED_CARD` constant is exported at the top of the file so the chrome stays consistent. Inline `rounded-2xl bg-white/60 border border-on-surface/10` is gone from the page (8 instances replaced).
+
+### Section title size
+
+Every inline `text-[28px] font-serif font-bold` section title is now `<SectionHeader>` (canonical 24px Fraunces medium / 0.14em eyebrow). 10 sections migrated: Community Says, Flavor Profile, Your Circle, Hotel Dining, My Rating Details, Visit History, Expert Picks, Hours, Contact, Location.
+
+### Inline hex literals — tokenized
+
+| Was | Now |
+|---|---|
+| `style={{ backgroundColor: '#2f3425' }}` | `bg-secondary` (the dark olive token) |
+| `bg-[#d4a373]` | `bg-accent` |
+| `text-[#2f3425]` | `text-secondary` |
+| `text-on-surface/55,45,40` everywhere | `text-ink-2 / text-ink-3` so dark mode flips |
+| Inline `shadow-sm` on the score circle | `shadow-[var(--shadow-card)]` |
+
+### Right rail spec
+
+`360px` sticky aside containing:
+1. Score badge (64px circle, color-coded by score band) + cuisine/price chips.
+2. Three primary actions in a grid: **Rate** (primary clay), **Save** (wishlist toggle), **Share**.
+3. Hours preview line — green/red dot + "Open · closes 10pm".
+4. Compact 3-button grid: **Call**, **Web**, **Maps**.
+5. Mini-map card (192px tall) with a "Get directions" CTA below the canvas.
+
+### Friends grid
+
+`grid-cols-1 md:grid-cols-2` → `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`.
+
+### RestaurantPanel.tsx fixes
+
+| Change | Decision |
+|---|---|
+| Hero media `height: 204` (3 occurrences) | `height: 192` — 8-pt-scale value, keeps Mapbox canvas size close to the original. |
+| `useTransform(... [204, 60])` (scroll-collapse start) | `[192, 60]`. |
+| ScorePill chrome | `bg-paper ring-1 ring-on-surface/[0.09]` → `bg-paper border border-on-surface/[0.06] shadow-[var(--shadow-card)]`. Matches the detail-page `BOXED_CARD` spec so the same surface reads the same anywhere on the detail page. |
+| `py-3.5` (off-scale) | `py-4`. |
+
+---
+
 ## Open follow-ups
 
 Tracked here so they don't get lost between phases. Items move to "done" or to a deeper phase note as they land.
 
 - [x] Phase 1 — Sidebar persistent-expanded on `>=1024px`; one `px-4` rhythm; `DesktopHeader` route-context fill + unified `+ Add` menu.
 - [x] Phase 2 — Discover wrapped in PageShell, killed the 25%-opacity-watermark "Recommended" cards, two-column desktop layout with sticky DiscoverRail.
-- [ ] Phase 3 — `RestaurantDetailDesktop` two-column with sticky right rail; hero gradient → `--color-cream`; replace inline `#2f3425` / `#d4a373`.
+- [x] Phase 3 — `RestaurantDetailDesktop` two-column with sticky right rail; hero gradient → `var(--color-surface)`; replaced inline `#2f3425` / `#d4a373`; section chrome varied; `RestaurantPanel.tsx` height + ScorePill aligned.
 - [ ] Phase 4 — Profile / Activity / Experts / Pantry / RecipesForYou run through PageShell + the new primitives; delete the local `EmptyState` in `Activity.tsx`. **Hide DesktopHeader on detail/sub-pages** that render their own sticky `<header>` (the Phase 1 audit list) so the two-stack disappears.
 - [ ] Phase 5 — Mapbox style switch on `RestaurantPanel.tsx:377` and `Discover.tsx:136-141`; semantic olive / tan / persimmon accents.
 - [ ] Phase 6 — Mobile pass after desktop is solid.
