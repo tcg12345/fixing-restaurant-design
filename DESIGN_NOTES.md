@@ -247,12 +247,54 @@ The Phase 1 fix here is the audit itself. No source change to the page list — 
 
 ---
 
+## Phase 2 — Discover (home surface)
+
+### Layout
+
+| Change | Decision | Why |
+|---|---|---|
+| Page width | Wrapped the entire home content (`sheetState === 'full'` block) in `<PageShell width={usingDesktopHeader ? 'default' : 'wide'}>` — caps at `max-w-6xl` (1152px) with `px-8` on desktop, `px-5` on mobile. The map page and the half-state remain full-bleed. | Previously the wrapper used `px-6` with no `max-w-*`, so on 1920px screens content stretched to ~1620px and 178px cards looked lonely. |
+| Section rhythm | All sections lock to `mt-20` (80px) desktop / `mt-12` (48px) mobile via `usingDesktopHeader ? 'mt-20' : 'mt-12'`. | Replaced the previous jagged 8→10→12→12 ramp at lines 4364/4386/4546/4568/4613/4707 with one value. |
+| Two-column on `xl+` | Social feed wrapped in `grid-cols-[minmax(0,1fr)_320px] gap-12`. Left column `max-w-2xl` holds the feed; right column is a sticky aside (`top-24`) with two `DiscoverRail` lists — "Friends' picks" and "Your top rated" — built from the existing `friendRatings` / `topRated` state (no new fetches). | The full-width 1100px+ photo feed felt lonely on wide monitors. Two-column matches the Instagram/Airbnb language and uses the real estate the new PageShell cap exposes. |
+
+### Section headers
+
+Every inline `text-[30px]/[22px] font-serif font-bold` header inside Discover is now `<SectionHeader>`:
+
+| Section | Eyebrow | Title |
+|---|---|---|
+| Recommended (loading + populated + empty branches) | `For you` | `Recommended` |
+| Guides | `Editorial` | `Guides` |
+| Recipes for you | `From the community` | `Recipes for you` |
+| Search results | `Search` | `Results` (count surfaces in the action slot) |
+
+All three Recommended states share one header so refresh button and "View all" link stay in the same position across states.
+
+### Cards
+
+| Rail | Before | After |
+|---|---|---|
+| Recommended | Custom 178×172 card with 25%-opacity photo watermark + manual cuisine eyebrow + bottom rating row. Killed the watermark entirely — it was the single largest "doesn't feel modern" tell in the app. | Desktop: `<FeedCard>` 4:3 photo-hero grid `grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6`. Mobile: horizontal snap rail of `<FeedCard>` 200px-wide tiles. Score badge in `bottomRight`, heart + add chips in `topRight`. |
+| Guides | 148×185 photo with overlay text in a custom card. | `<FeedCard aspect="4/3" overlay mediaOverlay="bottom-fade">` — same primitive in overlay mode. `Guide · count` chip in `topLeft`. |
+| Recipes for you | 178×237 photo card (mismatched aspect with Guides). | `<FeedCard aspect="4/3">` photo-up-top with source-tag chip; matches Guides aspect. Empty-state CTA recolored from inline emerald (`bg-emerald-600`) to `bg-secondary` (olive token) for "from the community" semantic. |
+| Search results | `grid-cols-2 lg:grid-cols-4` of `RestaurantCard` with `aspect-[4/5] sm:aspect-[4/3]` whiplash. | `grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6` of `<FeedCard aspect="4/3">`. The `RestaurantCard` import was removed from Discover (only used here previously). |
+
+### Other
+
+- `mt-8` on the SocialFeed wrapper → unified `mt-20`/`mt-12` rhythm.
+- Hardcoded shadows like `shadow-[0_8px_24px_-10px_rgba(0,0,0,0.12)]` removed in favor of `FeedCard`'s built-in `--shadow-card`/`--shadow-card-hover` ramp.
+- Empty-state copy retoned from `text-on-surface/55`/`text-on-surface/40` to `text-ink-2`/`text-ink-3` so dark-mode flips automatically through the ink ramp.
+- `DiscoverRail` is a new in-file helper component (not added to `components/ui/`) — it's specific to the home surface; if a second page wants this list shape we can promote it.
+- The brief option (b) was chosen for the two-column split because (a) — wide command bar — conflicts with the page-context chip introduced in Phase 1.
+
+---
+
 ## Open follow-ups
 
 Tracked here so they don't get lost between phases. Items move to "done" or to a deeper phase note as they land.
 
 - [x] Phase 1 — Sidebar persistent-expanded on `>=1024px`; one `px-4` rhythm; `DesktopHeader` route-context fill + unified `+ Add` menu.
-- [ ] Phase 2 — Discover wrapped in PageShell, kill the 25%-opacity-watermark "Recommended" cards, two-column desktop layout.
+- [x] Phase 2 — Discover wrapped in PageShell, killed the 25%-opacity-watermark "Recommended" cards, two-column desktop layout with sticky DiscoverRail.
 - [ ] Phase 3 — `RestaurantDetailDesktop` two-column with sticky right rail; hero gradient → `--color-cream`; replace inline `#2f3425` / `#d4a373`.
 - [ ] Phase 4 — Profile / Activity / Experts / Pantry / RecipesForYou run through PageShell + the new primitives; delete the local `EmptyState` in `Activity.tsx`. **Hide DesktopHeader on detail/sub-pages** that render their own sticky `<header>` (the Phase 1 audit list) so the two-stack disappears.
 - [ ] Phase 5 — Mapbox style switch on `RestaurantPanel.tsx:377` and `Discover.tsx:136-141`; semantic olive / tan / persimmon accents.

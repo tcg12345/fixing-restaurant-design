@@ -23,10 +23,10 @@ import {
   type CandidateSignals,
 } from '../lib/recommendations';
 import { getCuisineLabel } from './useRestaurantDetail';
-import { RestaurantCard } from '../components/RestaurantCard';
 import { RestaurantPanelBody, type RestaurantPanelSnapshot } from '../components/RestaurantPanel';
 import { SocialFeed } from '../components/SocialFeed';
 import { TopBar } from '../components/TopBar';
+import { PageShell, SectionHeader, FeedCard, FeedCardActionButton } from '../components/ui';
 import {
   HomeLocationBar,
   loadLastSelectedLocation,
@@ -82,6 +82,71 @@ async function applyCoverPhotos(
 // it as a const — rather than state — means buildQueryQueries /
 // scoreCandidates / cache keys all read a stable value every render.
 const REC_RADIUS_MILES = 8;
+
+/**
+ * Compact rail used by the xl+ two-column home layout. Renders a small
+ * list of restaurants (5 rows max) with thumbnail + name + meta + score
+ * orb, anchored under an eyebrow + title pair. When the source list is
+ * empty, surfaces a muted empty-state note instead of dropping the rail
+ * entirely so the sticky column doesn't collapse into thin air.
+ */
+const DiscoverRail: React.FC<{
+  eyebrow: string;
+  title: string;
+  empty: string;
+  rows: Array<{
+    id: string;
+    to: string;
+    name: string;
+    score: number;
+    meta: string;
+    photo: string | null;
+  }>;
+}> = ({ eyebrow, title, empty, rows }) => (
+  <section>
+    <div className="section-eyebrow mb-2">{eyebrow}</div>
+    <h3 className="section-title text-[18px] mb-4">{title}</h3>
+    {rows.length === 0 ? (
+      <p className="text-[13px] text-ink-3 leading-relaxed">{empty}</p>
+    ) : (
+      <ul className="divide-y divide-on-surface/[0.06]">
+        {rows.map((row) => (
+          <li key={row.id}>
+            <Link to={row.to} className="flex items-center gap-3 py-3 group">
+              <div className="w-12 h-12 rounded-2xl overflow-hidden bg-on-surface/[0.05] flex-shrink-0">
+                {row.photo ? (
+                  <img
+                    src={row.photo}
+                    alt={row.name}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center font-serif text-base font-bold text-on-surface/20">
+                    {row.name.charAt(0)}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-serif text-[14px] font-medium text-on-surface leading-snug truncate">
+                  {row.name}
+                </p>
+                {row.meta && (
+                  <p className="text-[12px] text-ink-3 leading-tight truncate mt-0.5">
+                    {row.meta}
+                  </p>
+                )}
+              </div>
+              {row.score > 0 && (
+                <ScoreBadge rating={row.score} size="sm" />
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+);
 
 const RecRefreshButton: React.FC<{
   onRefresh: () => void;
@@ -4226,8 +4291,14 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
               </div>
             )}
 
-            {/* Full discover content — scrollable */}
-            <div className={cn("flex-1 overflow-y-auto pb-32", phoneMode ? "px-3" : "px-6")}>
+            {/* Full discover content — scrollable.
+                On desktop PageShell caps the column at max-w-6xl (1152px)
+                with px-8; on mobile/phone-frame px-5. Map/non-home modes
+                bypass this wrapper to stay full-bleed. */}
+            <div className="flex-1 overflow-y-auto pb-32">
+              <PageShell width={usingDesktopHeader ? 'default' : 'wide'} padded={!phoneMode}
+                className={phoneMode ? 'px-3' : undefined}
+              >
 
               {/* Search results in full state */}
               {discoverSearchActive && (
@@ -4290,24 +4361,59 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                     </div>
                   ) : (
                     <>
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-serif font-bold">Results</h2>
-                        <span className="text-on-surface/40 text-xs font-bold uppercase tracking-widest">{places.length} found</span>
-                      </div>
-                      <div className={cn("grid gap-3", phoneMode ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-4")}>
+                      <SectionHeader
+                        eyebrow="Search"
+                        title="Results"
+                        action={
+                          <span className="text-ink-3 text-xs font-bold uppercase tracking-[0.14em]">
+                            {places.length} found
+                          </span>
+                        }
+                        spacing="tight"
+                      />
+                      <div className={cn(
+                        'grid gap-6',
+                        phoneMode ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+                      )}>
                         {places.map((place) => {
                           const props = placeToCardProps(place);
+                          const wishlisted = isWishlisted(place.id);
+                          const meta = {
+                            id: place.id, name: place.name, image: props.image,
+                            cuisine: props.cuisine, price: props.price, address: place.fullAddress || place.address,
+                          };
                           return (
-                            <RestaurantCard key={place.id} {...props}
-                              isWishlisted={isWishlisted(place.id)}
-                              onAdd={() => openAddRestaurantModal({
-                                id: place.id, name: place.name, image: props.image,
-                                cuisine: props.cuisine, price: props.price, address: place.fullAddress || place.address,
-                              })}
-                              onHeart={() => toggleWishlist({
-                                id: place.id, name: place.name, image: props.image,
-                                cuisine: props.cuisine, price: props.price, address: place.fullAddress || place.address,
-                              })}
+                            <FeedCard
+                              key={place.id}
+                              to={`/restaurant/${place.id}`}
+                              aspect="4/3"
+                              media={props.image ? (
+                                <img src={props.image} alt={place.name} referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="flex flex-col items-center justify-center text-on-surface/25 bg-on-surface/[0.04]">
+                                  <ImageOff size={20} />
+                                </div>
+                              )}
+                              topRight={
+                                <>
+                                  <FeedCardActionButton
+                                    ariaLabel={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+                                    active={wishlisted}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(meta); }}
+                                  >
+                                    <Heart size={16} className={wishlisted ? 'fill-primary' : ''} />
+                                  </FeedCardActionButton>
+                                  <FeedCardActionButton
+                                    ariaLabel="Add to list"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); openAddRestaurantModal(meta); }}
+                                  >
+                                    <Plus size={16} strokeWidth={2.4} />
+                                  </FeedCardActionButton>
+                                </>
+                              }
+                              bottomRight={props.rating > 0 ? <ScoreBadge rating={props.rating} size="sm" /> : undefined}
+                              title={place.name}
+                              subhead={[props.cuisine, props.price].filter(Boolean).join(' · ') || 'Restaurant'}
                             />
                           );
                         })}
@@ -4361,284 +4467,302 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
               >
               {/* Recommendations */}
               {recsLoading ? (
-                <section className={cn(usingDesktopHeader ? 'mt-10' : 'mt-7')}>
-                  <div className="flex items-end justify-between gap-4 mb-5">
-                    <div className="min-w-0">
-                      <h2 className={cn(
-                        'font-serif font-bold text-on-surface leading-[1.05]',
-                        usingDesktopHeader ? 'text-[30px]' : 'text-[22px]',
-                      )}>
-                        Recommended
-                      </h2>
-                    </div>
-                    {mode === 'home' && (
-                      <div className="flex-shrink-0 pb-1">
-                        <RecRefreshButton onRefresh={refreshRecs} refreshing={recsLoading} />
-                      </div>
-                    )}
-                  </div>
+                <section className={cn(usingDesktopHeader ? 'mt-20' : 'mt-12')}>
+                  <SectionHeader
+                    eyebrow="For you"
+                    title="Recommended"
+                    action={mode === 'home' ? (
+                      <RecRefreshButton onRefresh={refreshRecs} refreshing={recsLoading} />
+                    ) : undefined}
+                  />
                   <div className="flex items-center justify-center py-10">
                     <Loader2 size={18} className="text-primary/40 animate-spin" />
-                    <span className="ml-2 text-xs text-on-surface/40">Finding picks near you…</span>
+                    <span className="ml-2 text-xs text-ink-3">Finding picks near you…</span>
                   </div>
                 </section>
               ) : recommendations.length > 0 ? (
-                <section className={cn(usingDesktopHeader ? 'mt-10' : 'mt-7')}>
-                  <div className="flex items-end justify-between gap-4 mb-5">
-                    <div className="min-w-0">
-                      <h2 className={cn(
-                        'font-serif font-bold text-on-surface leading-[1.05]',
-                        usingDesktopHeader ? 'text-[30px]' : 'text-[22px]',
-                      )}>
-                        Recommended
-                      </h2>
-                    </div>
-                    {mode === 'home' && (
-                      <div className="flex-shrink-0 pb-1">
-                        <RecRefreshButton onRefresh={refreshRecs} refreshing={recsLoading} />
+                <section className={cn(usingDesktopHeader ? 'mt-20' : 'mt-12')}>
+                  <SectionHeader
+                    eyebrow="For you"
+                    title="Recommended"
+                    action={
+                      <div className="flex items-center gap-3">
+                        {homeLocation && (
+                          <Link
+                            to={`/location?label=${encodeURIComponent(homeLocation.label)}&lat=${homeLocation.lat}&lng=${homeLocation.lng}`}
+                            className="hidden sm:inline-flex items-center gap-1 text-[12px] font-bold uppercase tracking-[0.14em] text-primary hover:text-primary/80 transition-colors"
+                          >
+                            View all <ChevronRight size={12} strokeWidth={2.5} />
+                          </Link>
+                        )}
+                        {mode === 'home' && <RecRefreshButton onRefresh={refreshRecs} refreshing={recsLoading} />}
                       </div>
-                    )}
-                  </div>
-                  <div
-                    className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-1 px-1 snap-x snap-mandatory"
-                    onScroll={(e) => {
-                      // Stop fetching once we have enough to fill the rail
-                      // — the user hits the View-all card before this cap.
-                      if (recommendations.length >= 30) return;
-                      const el = e.currentTarget;
-                      if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 300) loadMoreRecommendations();
-                    }}
-                  >
-                    {recommendations.slice(0, 30).map((place) => {
-                      const cuisine = getCuisineLabel((place as any).types || []);
-                      const wishlisted = isWishlisted(place.id);
-                      const photoUrl = (place as any).photoUrl as string | undefined;
-                      const rating = (place as any).rating as number | undefined;
-                      const price = priceLevelToString((place as any).priceLevel || 0);
-                      const fullAddress = (place as any).address as string || '';
-                      // First chunk of the address is usually street + number
-                      // (e.g. "120 Wythe Ave") — most useful neighborhood-level
-                      // signal in a short card.
-                      const street = fullAddress.split(',')[0]?.trim() || '';
-                      const recMeta = {
-                        id: place.id,
-                        name: place.name,
-                        image: photoUrl || '',
-                        cuisine,
-                        price,
-                        address: fullAddress,
-                      };
-                      return (
-                        <button
-                          key={place.id}
-                          type="button"
-                          onClick={() => navigate(`/restaurant/${place.id}`)}
-                          className="flex-shrink-0 w-[178px] snap-start text-left group"
-                        >
-                          <div className="relative h-[172px] rounded-2xl bg-white border border-on-surface/[0.07] group-hover:border-on-surface/[0.16] group-hover:shadow-[0_8px_24px_-10px_rgba(0,0,0,0.12)] transition-all p-3.5 flex flex-col overflow-hidden">
-                            {/* Subtle photo backdrop only when one exists — fades into the card */}
-                            {photoUrl && (
-                              <div className="absolute inset-0 pointer-events-none">
-                                <img
-                                  src={photoUrl}
-                                  alt=""
-                                  className="absolute inset-0 w-full h-full object-cover opacity-25 group-hover:opacity-30 transition-opacity"
-                                  referrerPolicy="no-referrer"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/85 to-white" />
+                    }
+                  />
+                  {/* Desktop: photo-forward FeedCard grid that fills the page
+                      column. Mobile: horizontal snap-rail (kills the watermark
+                      treatment entirely — the photo is now the hero, not a
+                      25%-opacity backdrop). The infinite-scroll fetch trigger
+                      only fires on the mobile rail; desktop renders the first
+                      batch (up to 8) and the View-all link handles the rest. */}
+                  {usingDesktopHeader ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {recommendations.slice(0, 8).map((place) => {
+                        const cuisine = getCuisineLabel((place as any).types || []);
+                        const wishlisted = isWishlisted(place.id);
+                        const photoUrl = (place as any).photoUrl as string | undefined;
+                        const rating = (place as any).rating as number | undefined;
+                        const price = priceLevelToString((place as any).priceLevel || 0);
+                        const fullAddress = (place as any).address as string || '';
+                        const street = fullAddress.split(',')[0]?.trim() || '';
+                        const subhead = [cuisine, price, street].filter(Boolean).join(' · ');
+                        const recMeta = {
+                          id: place.id, name: place.name, image: photoUrl || '',
+                          cuisine, price, address: fullAddress,
+                        };
+                        return (
+                          <FeedCard
+                            key={place.id}
+                            to={`/restaurant/${place.id}`}
+                            aspect="4/3"
+                            media={photoUrl ? (
+                              <img src={photoUrl} alt={place.name} referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-on-surface/25 bg-on-surface/[0.04]">
+                                <ImageOff size={20} />
+                                <span className="text-[9px] font-bold uppercase tracking-[0.14em] mt-1">
+                                  No photo
+                                </span>
                               </div>
                             )}
-
-                            <div className="relative flex flex-col h-full">
-                              {/* Top: cuisine eyebrow + action buttons */}
-                              <div className="flex items-start justify-between gap-2">
-                                <span className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-primary/65 truncate flex-1 leading-tight pt-1">
-                                  {cuisine || 'Restaurant'}
-                                </span>
-                                <div className="flex items-center gap-0.5 -mt-1.5 -mr-1.5 flex-shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleWishlist(recMeta); }}
-                                    className={cn(
-                                      'w-7 h-7 rounded-full flex items-center justify-center transition-colors',
-                                      wishlisted ? 'text-primary' : 'text-on-surface/45 hover:text-primary hover:bg-on-surface/[0.05]',
-                                    )}
-                                    aria-label={wishlisted ? 'In wishlist' : 'Add to wishlist'}
-                                  >
-                                    <Heart size={14} className={wishlisted ? 'fill-primary' : ''} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); openAddRestaurantModal(recMeta); }}
-                                    className="w-7 h-7 rounded-full flex items-center justify-center text-primary hover:bg-primary/10 transition-colors"
-                                    aria-label="Add to list"
-                                  >
-                                    <Plus size={14} />
-                                  </button>
+                            topRight={
+                              <>
+                                <FeedCardActionButton
+                                  ariaLabel={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+                                  active={wishlisted}
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(recMeta); }}
+                                >
+                                  <Heart size={16} className={wishlisted ? 'fill-primary' : ''} />
+                                </FeedCardActionButton>
+                                <FeedCardActionButton
+                                  ariaLabel="Add to list"
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); openAddRestaurantModal(recMeta); }}
+                                >
+                                  <Plus size={16} strokeWidth={2.4} />
+                                </FeedCardActionButton>
+                              </>
+                            }
+                            bottomRight={rating && rating > 0 ? <ScoreBadge rating={rating} size="sm" /> : undefined}
+                            title={place.name}
+                            subhead={subhead || 'Restaurant'}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div
+                      className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-1 px-1 snap-x snap-mandatory"
+                      onScroll={(e) => {
+                        if (recommendations.length >= 30) return;
+                        const el = e.currentTarget;
+                        if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 300) loadMoreRecommendations();
+                      }}
+                    >
+                      {recommendations.slice(0, 30).map((place) => {
+                        const cuisine = getCuisineLabel((place as any).types || []);
+                        const wishlisted = isWishlisted(place.id);
+                        const photoUrl = (place as any).photoUrl as string | undefined;
+                        const rating = (place as any).rating as number | undefined;
+                        const price = priceLevelToString((place as any).priceLevel || 0);
+                        const fullAddress = (place as any).address as string || '';
+                        const street = fullAddress.split(',')[0]?.trim() || '';
+                        const subhead = [cuisine, price, street].filter(Boolean).join(' · ');
+                        const recMeta = {
+                          id: place.id, name: place.name, image: photoUrl || '',
+                          cuisine, price, address: fullAddress,
+                        };
+                        return (
+                          <div key={place.id} className="flex-shrink-0 w-[200px] snap-start">
+                            <FeedCard
+                              to={`/restaurant/${place.id}`}
+                              aspect="4/3"
+                              media={photoUrl ? (
+                                <img src={photoUrl} alt={place.name} referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="flex flex-col items-center justify-center text-on-surface/25 bg-on-surface/[0.04]">
+                                  <ImageOff size={20} />
                                 </div>
-                              </div>
-
-                              {/* Body: name + location + rating row pinned to the bottom */}
-                              <div className="flex-1 flex flex-col justify-end mt-2">
-                                <h3 className="font-serif text-[15px] font-bold text-on-surface leading-[1.18] line-clamp-2">
-                                  {place.name}
-                                </h3>
-                                {street && (
-                                  <p className="mt-1 text-[11px] text-on-surface/45 font-medium truncate">
-                                    {street}
-                                  </p>
-                                )}
-                                {((rating && rating > 0) || price) && (
-                                  <div className="flex items-center gap-1.5 text-[11.5px] mt-1.5">
-                                    {rating && rating > 0 && (
-                                      <span className="inline-flex items-center gap-0.5 font-bold text-amber-600">
-                                        <Star size={11} className="fill-amber-500 text-amber-500" />
-                                        {rating.toFixed(1)}
-                                      </span>
-                                    )}
-                                    {rating && rating > 0 && price && <span className="text-on-surface/25">·</span>}
-                                    {price && <span className="text-on-surface/60 font-semibold">{price}</span>}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                              )}
+                              topRight={
+                                <>
+                                  <FeedCardActionButton
+                                    ariaLabel={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+                                    active={wishlisted}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(recMeta); }}
+                                  >
+                                    <Heart size={16} className={wishlisted ? 'fill-primary' : ''} />
+                                  </FeedCardActionButton>
+                                  <FeedCardActionButton
+                                    ariaLabel="Add to list"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); openAddRestaurantModal(recMeta); }}
+                                  >
+                                    <Plus size={16} strokeWidth={2.4} />
+                                  </FeedCardActionButton>
+                                </>
+                              }
+                              bottomRight={rating && rating > 0 ? <ScoreBadge rating={rating} size="sm" /> : undefined}
+                              title={place.name}
+                              subhead={subhead || 'Restaurant'}
+                            />
                           </div>
-                        </button>
-                      );
-                    })}
-                    {recsLoadingMore && (
-                      <div className="flex-shrink-0 w-[178px] flex items-center justify-center">
-                        <Loader2 size={18} className="text-primary/40 animate-spin" />
-                      </div>
-                    )}
-                    {/* View-all end-card — takes the user to the full
-                        location page so they can browse beyond the
-                        first 30 recommendations. */}
-                    {homeLocation && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          navigate(
-                            `/location?label=${encodeURIComponent(homeLocation.label)}&lat=${homeLocation.lat}&lng=${homeLocation.lng}`,
-                          )
-                        }
-                        className="flex-shrink-0 w-[178px] snap-start text-left group"
-                      >
-                        <div className="relative h-[172px] rounded-2xl border border-dashed border-primary/30 bg-primary/[0.03] group-hover:bg-primary/[0.07] group-hover:border-primary/45 transition-colors p-4 flex flex-col items-center justify-center text-center">
-                          <div className="w-10 h-10 rounded-full bg-primary/12 group-hover:bg-primary/20 transition-colors flex items-center justify-center mb-2">
-                            <ChevronRight size={18} className="text-primary" strokeWidth={2.2} />
-                          </div>
-                          <p className="font-serif text-[14px] font-bold text-primary leading-tight">View all</p>
-                          <p className="text-[10.5px] text-on-surface/55 mt-1 line-clamp-2 leading-tight max-w-full">
-                            in {homeLocation.label.split(',')[0]}
-                          </p>
+                        );
+                      })}
+                      {recsLoadingMore && (
+                        <div className="flex-shrink-0 w-[200px] flex items-center justify-center">
+                          <Loader2 size={18} className="text-primary/40 animate-spin" />
                         </div>
-                      </button>
-                    )}
-                  </div>
+                      )}
+                      {homeLocation && (
+                        <Link
+                          to={`/location?label=${encodeURIComponent(homeLocation.label)}&lat=${homeLocation.lat}&lng=${homeLocation.lng}`}
+                          className="flex-shrink-0 w-[200px] snap-start text-left group"
+                        >
+                          <div className="relative aspect-[4/3] rounded-2xl border border-dashed border-primary/30 bg-primary/[0.03] group-hover:bg-primary/[0.07] group-hover:border-primary/45 transition-colors p-4 flex flex-col items-center justify-center text-center">
+                            <div className="w-10 h-10 rounded-full bg-primary/12 group-hover:bg-primary/20 transition-colors flex items-center justify-center mb-2">
+                              <ChevronRight size={18} className="text-primary" strokeWidth={2.2} />
+                            </div>
+                            <p className="font-serif text-[14px] font-medium text-primary leading-tight">View all</p>
+                            <p className="text-[10.5px] text-ink-3 mt-1 line-clamp-2 leading-tight max-w-full">
+                              in {homeLocation.label.split(',')[0]}
+                            </p>
+                          </div>
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </section>
               ) : mode === 'home' && homeLocation ? (
-                // Empty state. Most common cause: the user switched to a
-                // city for the first time and the personalised queries
-                // came back narrower than the radius allows. We keep the
-                // header visible so the radius picker stays reachable —
-                // bumping the chip is usually the fix.
-                <section className={cn(usingDesktopHeader ? 'mt-10' : 'mt-7')}>
-                  <div className="flex items-end justify-between gap-4 mb-5">
-                    <div className="min-w-0">
-                      <h2 className={cn(
-                        'font-serif font-bold text-on-surface leading-[1.05]',
-                        usingDesktopHeader ? 'text-[30px]' : 'text-[22px]',
-                      )}>
-                        Recommended
-                      </h2>
-                    </div>
-                    <div className="flex-shrink-0 pb-1">
-                      <RecRefreshButton onRefresh={refreshRecs} refreshing={recsLoading} />
-                    </div>
-                  </div>
+                <section className={cn(usingDesktopHeader ? 'mt-20' : 'mt-12')}>
+                  <SectionHeader
+                    eyebrow="For you"
+                    title="Recommended"
+                    action={<RecRefreshButton onRefresh={refreshRecs} refreshing={recsLoading} />}
+                  />
                   <div className="rounded-2xl border border-dashed border-on-surface/15 bg-on-surface/[0.02] py-10 px-6 text-center">
-                    <p className="text-sm text-on-surface/55 font-semibold">No recommendations in this area yet</p>
-                    <p className="text-xs text-on-surface/40 mt-1">Try a wider radius or a different location.</p>
+                    <p className="text-sm text-ink-2 font-semibold">No recommendations in this area yet</p>
+                    <p className="text-xs text-ink-3 mt-1">Try a wider radius or a different location.</p>
                   </div>
                 </section>
               ) : null}
 
-              {/* Guides — curated lists published by experts and members */}
-              <section className={cn(usingDesktopHeader ? 'mt-12' : 'mt-8')}>
-                <div className="flex items-end justify-between gap-4 mb-5">
-                  <div className="min-w-0">
-                    <h2 className={cn(
-                      'font-serif font-bold text-on-surface leading-[1.05]',
-                      usingDesktopHeader ? 'text-[30px]' : 'text-[22px]',
-                    )}>
-                      Guides
-                    </h2>
+              {/* Guides — curated lists published by experts and members.
+                  Desktop: 4-col FeedCard grid with the title overlaid on
+                  the photo (overlay mode). Mobile: horizontal snap-rail. */}
+              <section className={cn(usingDesktopHeader ? 'mt-20' : 'mt-12')}>
+                <SectionHeader eyebrow="Editorial" title="Guides" />
+                {usingDesktopHeader ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {MOCK_GUIDES.map((g) => (
+                      <FeedCard
+                        key={g.id}
+                        aspect="4/3"
+                        media={<img src={g.image} alt={g.title} referrerPolicy="no-referrer" />}
+                        topLeft={
+                          <span className="inline-flex items-center gap-1 rounded-full bg-white/90 backdrop-blur px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface/70">
+                            <BookOpen size={10} /> Guide · {g.count}
+                          </span>
+                        }
+                        mediaOverlay="bottom-fade"
+                        overlay
+                        title={g.title}
+                        subhead={`by ${g.author}`}
+                      />
+                    ))}
                   </div>
-                </div>
-                <div className="flex gap-2.5 overflow-x-auto pb-2 no-scrollbar -mx-1 px-1 snap-x snap-mandatory">
-                  {MOCK_GUIDES.map((g) => (
-                    <button
-                      key={g.id}
-                      type="button"
-                      className="flex-shrink-0 snap-start group text-left"
-                    >
-                      <div className="relative w-[148px] aspect-[4/5] rounded-2xl overflow-hidden bg-on-surface/[0.05] border border-on-surface/[0.06] group-hover:shadow-[0_8px_24px_-10px_rgba(0,0,0,0.18)] transition-all">
-                        <img
-                          src={g.image}
-                          alt={g.title}
-                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
-                          referrerPolicy="no-referrer"
+                ) : (
+                  <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-1 px-1 snap-x snap-mandatory">
+                    {MOCK_GUIDES.map((g) => (
+                      <div key={g.id} className="flex-shrink-0 w-[200px] snap-start">
+                        <FeedCard
+                          aspect="4/3"
+                          media={<img src={g.image} alt={g.title} referrerPolicy="no-referrer" />}
+                          topLeft={
+                            <span className="inline-flex items-center gap-1 rounded-full bg-white/90 backdrop-blur px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface/70">
+                              <BookOpen size={10} /> Guide
+                            </span>
+                          }
+                          mediaOverlay="bottom-fade"
+                          overlay
+                          title={g.title}
+                          subhead={`by ${g.author}`}
                         />
-                        <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/45 to-transparent pointer-events-none" />
-                        <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/45 to-transparent pointer-events-none" />
-                        <span className="absolute top-2 left-2 inline-flex items-center gap-0.5 rounded-full bg-white/90 backdrop-blur px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.14em] text-on-surface/70">
-                          <BookOpen size={8} />
-                          Guide
-                        </span>
-                        <div className="absolute inset-x-0 bottom-0 p-2.5">
-                          <p className="text-white text-[11.5px] font-serif font-bold leading-tight drop-shadow-sm line-clamp-2">{g.title}</p>
-                          <p className="text-white/75 text-[9.5px] font-medium mt-0.5 truncate">by {g.author}</p>
-                        </div>
                       </div>
-                    </button>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </section>
 
               {/* Recipes For You — friend / expert / public recipes ranked by
                    source + cuisine/tag overlap with the user's logged Home
-                   Cooking meals. Always renders the section so the View all
-                   affordance is reachable even before the pools load. */}
-              <section className={cn(usingDesktopHeader ? 'mt-12' : 'mt-8')}>
-                <div className="flex items-end justify-between gap-4 mb-5">
-                  <div className="min-w-0">
-                    <h2 className={cn(
-                      'font-serif font-bold text-on-surface leading-[1.05]',
-                      usingDesktopHeader ? 'text-[30px]' : 'text-[22px]',
-                    )}>
-                      Recipes for you
-                    </h2>
-                  </div>
-                  <Link
-                    to="/recipes-for-you"
-                    className="flex-shrink-0 text-[11px] font-bold uppercase tracking-[0.12em] text-primary hover:text-primary/80 transition-colors pb-1.5"
-                  >
-                    View all
-                  </Link>
-                </div>
+                   Cooking meals. Desktop: 4-col FeedCard grid; mobile:
+                   horizontal snap-rail. */}
+              <section className={cn(usingDesktopHeader ? 'mt-20' : 'mt-12')}>
+                <SectionHeader
+                  eyebrow="From the community"
+                  title="Recipes for you"
+                  action={
+                    <Link
+                      to="/recipes-for-you"
+                      className="inline-flex items-center gap-1 text-[12px] font-bold uppercase tracking-[0.14em] text-primary hover:text-primary/80 transition-colors"
+                    >
+                      View all <ChevronRight size={12} strokeWidth={2.5} />
+                    </Link>
+                  }
+                />
                 {recommendedRecipes.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-on-surface/15 bg-on-surface/[0.02] p-5 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-on-surface/65">No recipes from your circle yet</p>
-                      <p className="text-[12px] text-on-surface/40 mt-0.5">Browse the community for ideas to cook next.</p>
+                      <p className="text-sm font-semibold text-ink-2">No recipes from your circle yet</p>
+                      <p className="text-[12px] text-ink-3 mt-0.5">Browse the community for ideas to cook next.</p>
                     </div>
                     <Link
                       to="/recipes-for-you"
-                      className="flex-shrink-0 px-3.5 py-2 rounded-full bg-emerald-600 text-white text-[12px] font-semibold hover:bg-emerald-700 transition-colors"
+                      className="flex-shrink-0 px-4 h-9 inline-flex items-center rounded-full bg-secondary text-white text-[12px] font-semibold hover:bg-secondary/90 transition-colors"
                     >
                       Explore
                     </Link>
+                  </div>
+                ) : usingDesktopHeader ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {recommendedRecipes.map((r) => {
+                      const cover = r.photos?.[0];
+                      const sourceLabel = r._source === 'friend' ? 'From a friend' : r._source === 'expert' ? 'From an expert' : 'Community';
+                      const sourceCls =
+                        r._source === 'friend' ? 'bg-blue-500/95 text-white'
+                        : r._source === 'expert' ? 'bg-secondary/95 text-white'
+                        : 'bg-white/90 text-on-surface/70';
+                      return (
+                        <FeedCard
+                          key={r.id}
+                          to={`/recipe/${r.id}`}
+                          aspect="4/3"
+                          media={cover ? (
+                            <img src={cover} alt={r.title} referrerPolicy="no-referrer" />
+                          ) : (
+                            <div className="flex items-center justify-center bg-secondary/10 text-secondary/70">
+                              <ChefHat size={32} />
+                            </div>
+                          )}
+                          topLeft={
+                            <span className={cn('inline-flex items-center gap-1 rounded-full backdrop-blur px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em]', sourceCls)}>
+                              {sourceLabel}
+                            </span>
+                          }
+                          title={r.title}
+                          subhead={r.cuisine || 'Recipe'}
+                        />
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-1 px-1 snap-x snap-mandatory">
@@ -4647,71 +4771,94 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                       const sourceLabel = r._source === 'friend' ? 'Friend' : r._source === 'expert' ? 'Chef' : 'Community';
                       const sourceCls =
                         r._source === 'friend' ? 'bg-blue-500/95 text-white'
-                        : r._source === 'expert' ? 'bg-amber-500/95 text-white'
+                        : r._source === 'expert' ? 'bg-secondary/95 text-white'
                         : 'bg-white/90 text-on-surface/70';
                       return (
-                        <Link
-                          key={r.id}
-                          to={`/recipe/${r.id}`}
-                          className="flex-shrink-0 w-[178px] snap-start group"
-                        >
-                          {cover ? (
-                            /* Photo card — text overlaid on bottom gradient */
-                            <div className="relative w-[178px] aspect-[3/4] rounded-2xl overflow-hidden bg-on-surface/[0.05] border border-on-surface/[0.06] group-hover:shadow-[0_8px_24px_-10px_rgba(0,0,0,0.18)] transition-all">
-                              <img
-                                src={cover}
-                                alt={r.title}
-                                className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
-                                referrerPolicy="no-referrer"
-                              />
-                              <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none" />
-                              <span className={cn('absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full backdrop-blur px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]', sourceCls)}>
+                        <div key={r.id} className="flex-shrink-0 w-[200px] snap-start">
+                          <FeedCard
+                            to={`/recipe/${r.id}`}
+                            aspect="4/3"
+                            media={cover ? (
+                              <img src={cover} alt={r.title} referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="flex items-center justify-center bg-secondary/10 text-secondary/70">
+                                <ChefHat size={32} />
+                              </div>
+                            )}
+                            topLeft={
+                              <span className={cn('inline-flex items-center gap-1 rounded-full backdrop-blur px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em]', sourceCls)}>
                                 {sourceLabel}
                               </span>
-                              <div className="absolute inset-x-0 bottom-0 p-3">
-                                <p className="text-white text-[13px] font-serif font-bold leading-tight drop-shadow-sm line-clamp-2">{r.title}</p>
-                                {r.cuisine && (
-                                  <p className="text-white/80 text-[10px] font-medium mt-1 truncate">{r.cuisine}</p>
-                                )}
-                              </div>
-                            </div>
-                          ) : (
-                            /* Text-rich card — no broken placeholder. Soft emerald
-                               accent identifies it as a recipe at a glance. */
-                            <div className="relative w-[178px] aspect-[3/4] rounded-2xl bg-white border border-on-surface/[0.07] group-hover:border-on-surface/[0.16] group-hover:shadow-[0_8px_24px_-10px_rgba(0,0,0,0.12)] transition-all p-4 flex flex-col overflow-hidden">
-                              <div className="absolute inset-x-0 top-0 h-1 bg-emerald-500/80" />
-                              <div className="flex items-center justify-between gap-2">
-                                <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]', sourceCls)}>
-                                  {sourceLabel}
-                                </span>
-                                <ChefHat size={14} className="text-emerald-500/70" />
-                              </div>
-                              <div className="flex-1 flex items-end mt-3">
-                                <p className="font-serif text-[16px] font-bold text-on-surface leading-[1.2] line-clamp-4">
-                                  {r.title}
-                                </p>
-                              </div>
-                              {r.cuisine && (
-                                <p className="text-[11px] text-on-surface/55 font-medium mt-2 truncate">{r.cuisine}</p>
-                              )}
-                            </div>
-                          )}
-                        </Link>
+                            }
+                            title={r.title}
+                            subhead={r.cuisine || 'Recipe'}
+                          />
+                        </div>
                       );
                     })}
                   </div>
                 )}
               </section>
 
-              {/* Social Feed */}
-              <div className="mt-8">
-                <SocialFeed
-                  centerLat={mode === 'home' ? homeLocation?.lat ?? null : null}
-                  centerLng={mode === 'home' ? homeLocation?.lng ?? null : null}
-                />
-              </div>
+              {/* Social Feed.
+                  On xl+ desktop we split into a two-column layout: the
+                  feed sits in a max-w-2xl left column, and a sticky rail
+                  on the right shows the user's friend activity + top
+                  rated picks so the wide desktop width doesn't leave
+                  the social column lonely (was a full-width 1100px+
+                  photo stream). The split disappears below xl. */}
+              <section className={cn(usingDesktopHeader ? 'mt-20' : 'mt-12')}>
+                {usingDesktopHeader ? (
+                  <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-12">
+                    <div className="min-w-0 max-w-2xl xl:max-w-none">
+                      <SocialFeed
+                        centerLat={mode === 'home' ? homeLocation?.lat ?? null : null}
+                        centerLng={mode === 'home' ? homeLocation?.lng ?? null : null}
+                      />
+                    </div>
+                    <aside className="hidden xl:block">
+                      <div className="sticky top-24 space-y-8">
+                        <DiscoverRail
+                          eyebrow="Your circle"
+                          title="Friends' picks"
+                          empty="When your friends rate places they'll show up here."
+                          rows={friendRatings.slice(0, 5).map((r) => ({
+                            id: r.id,
+                            to: `/restaurant/${r.restaurant_id}`,
+                            name: r.restaurant_name,
+                            score: Number(r.score),
+                            meta:
+                              (friendProfiles[r.user_id]?.display_name || 'Friend')
+                              + (r.cuisine ? ` · ${r.cuisine}` : ''),
+                            photo: r.photo_url || null,
+                          }))}
+                        />
+                        <DiscoverRail
+                          eyebrow="From you"
+                          title="Your top rated"
+                          empty="Rate a place 7 or higher to see it here."
+                          rows={topRated.slice(0, 4).map((r) => ({
+                            id: r.id,
+                            to: `/restaurant/${r.restaurantId}`,
+                            name: r.name,
+                            score: r.score,
+                            meta: r.cuisine || '',
+                            photo: r.image || null,
+                          }))}
+                        />
+                      </div>
+                    </aside>
+                  </div>
+                ) : (
+                  <SocialFeed
+                    centerLat={mode === 'home' ? homeLocation?.lat ?? null : null}
+                    centerLng={mode === 'home' ? homeLocation?.lng ?? null : null}
+                  />
+                )}
+              </section>
               </div>
               )}
+              </PageShell>
             </div>
 
             {/* Floating map button — only if this instance actually has a map */}
