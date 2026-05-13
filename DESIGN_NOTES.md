@@ -211,13 +211,49 @@ The second locally-defined `EmptyState` inside `Activity.tsx` will be removed du
 
 ---
 
+## Phase 1 — Desktop chrome (Sidebar + DesktopHeader)
+
+### Sidebar
+
+| Change | Decision | Why |
+|---|---|---|
+| Hover-collapse | **Removed.** Sidebar is persistent expanded by default. | The constant springing back and forth on every cursor pass was disliked; the icon-only rail also wasted the brand area. |
+| Collapse toggle | New `PanelLeftClose` / `PanelLeftOpen` chevron in the header, persisted to `localStorage['gourmet-canvas-sidebar-collapsed']`. | Users who want a compact rail can still get it; the choice survives reloads. |
+| Padding rhythm | Every block (`header`, `Create CTA`, `nav`, `footer`) locked to `px-4`. Previous mix (`px-2 / px-3 / px-5`) is gone. | One rhythm down the entire rail; no per-block guesswork. |
+| Create menu shadow | `shadow-xl` → `shadow-[var(--shadow-card-hover)]` | Routes through the Phase 0 shadow token. |
+
+The constants `SIDEBAR_EXPANDED_WIDTH = 264` and `SIDEBAR_COLLAPSED_WIDTH = 72` are unchanged — only the trigger for switching between them changed.
+
+### DesktopHeader
+
+| Change | Decision | Why |
+|---|---|---|
+| Empty space right of search | **Filled with a route-derived page-context chip on the LEFT.** Compact eyebrow (10px Mono uppercase / 0.14em) + page title (18px Fraunces medium). | Brief option (b): route-specific context that orients the user. Picked left placement so the chip reads like a "you are here" label before the search input. |
+| Scoped search (Pantry hijack) | Scope name now appears in the page-title chip when scoped. | The user gets a single source of orientation — the chip — instead of guessing from the search-input placeholder. |
+| Search input width | `flex-1 max-w-2xl` → `flex-1 max-w-md ml-auto`. | Frees real estate for the new page chip and the + Add menu without sacrificing the live-search dropdown that pages still depend on (Pantry's scoped-search). The full command-K rebuild is deferred — the current input *is* essentially a command palette with portal-rendered results — only the trigger shape changed. |
+| Add CTA on Home | `!isHomeRoute` guard removed. | Brief: every page deserves a clear primary CTA. |
+| Add CTA shape | One button `+ Add ▾` opening a four-item menu (Rating / Recipe / Reel / Post). | Brief: a single primary action that opens a menu, on every page. Item routing: Rating → `/search/main`; Recipe → `openHomeMealModal()`; Reel → `openAddReelModal()`; Post → `openAddPostModal()`. |
+| `PageAddAction` override | Preserved, surfaced as a contextual "On this page" item at the top of the + Add menu (with the page-provided label). | Pantry's per-list "Add Recipe to All Recipes" shortcut keeps working without compromising the unified menu. |
+| Search dropdown shadow | Inline `shadow-[0_18px_48px_-12px_rgba(0,0,0,0.22)]` → `shadow-[var(--shadow-card-hover)]`. | Phase 0 shadow token. |
+
+The Add menu rebuilds on every route change so Pantry's per-view overrides re-render correctly.
+
+### TopBar audit
+
+- **Only `Discover.tsx` imports the canonical `<TopBar>` component**, and it's correctly guarded with `!usingDesktopHeader` at `Discover.tsx:4212`. The brief's mention of `Experts.tsx:182-185` and `Pantry.tsx` rendering `TopBar` is inaccurate in the current source: Experts has no header at all, and Pantry's local `hideTopBar` variable refers to its own combined tabs + list switcher block, not the canonical component.
+- **Real "two stacked headers" cases** exist where pages mount their own sticky `<header>` inside the sidebar layout. Found via `grep "sticky top-0"` across pages: `Activity.tsx`, `SearchMain.tsx`, `RecipesForYou.tsx`, `UserProfile.tsx`, `FriendReviewDetail.tsx`, `RestaurantCircleReviews.tsx`, `MealRecipePage.tsx`, `ReorderRatings.tsx`, `ImportRestaurants.tsx`, `LocationPage.tsx`. These are page-specific chrome (back arrow + title or filter rows), not the canonical `<TopBar>`, and the cleanup belongs with each page's own rework in phases 3–4 — either by hiding DesktopHeader on those routes (via `App.tsx`'s `hideHeader` list) or by removing the redundant page-level header.
+
+The Phase 1 fix here is the audit itself. No source change to the page list — touching every detail page is out of scope for the chrome phase.
+
+---
+
 ## Open follow-ups
 
 Tracked here so they don't get lost between phases. Items move to "done" or to a deeper phase note as they land.
 
-- [ ] Phase 1 — Sidebar persistent-expanded on `>=1024px`; one `px-4` rhythm; `DesktopHeader` route-context fill.
+- [x] Phase 1 — Sidebar persistent-expanded on `>=1024px`; one `px-4` rhythm; `DesktopHeader` route-context fill + unified `+ Add` menu.
 - [ ] Phase 2 — Discover wrapped in PageShell, kill the 25%-opacity-watermark "Recommended" cards, two-column desktop layout.
 - [ ] Phase 3 — `RestaurantDetailDesktop` two-column with sticky right rail; hero gradient → `--color-cream`; replace inline `#2f3425` / `#d4a373`.
-- [ ] Phase 4 — Profile / Activity / Experts / Pantry / RecipesForYou run through PageShell + the new primitives; delete the local `EmptyState` in `Activity.tsx`.
+- [ ] Phase 4 — Profile / Activity / Experts / Pantry / RecipesForYou run through PageShell + the new primitives; delete the local `EmptyState` in `Activity.tsx`. **Hide DesktopHeader on detail/sub-pages** that render their own sticky `<header>` (the Phase 1 audit list) so the two-stack disappears.
 - [ ] Phase 5 — Mapbox style switch on `RestaurantPanel.tsx:377` and `Discover.tsx:136-141`; semantic olive / tan / persimmon accents.
 - [ ] Phase 6 — Mobile pass after desktop is solid.

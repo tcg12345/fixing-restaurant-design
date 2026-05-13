@@ -2,15 +2,57 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, X, Plus, Heart, MessageCircle, Users, Clock, Loader2 } from 'lucide-react';
+import {
+  Search,
+  X,
+  Plus,
+  Heart,
+  MessageCircle,
+  Users,
+  Clock,
+  Loader2,
+  ChevronDown,
+  Star,
+  ChefHat,
+  Film,
+  Image as ImageIcon,
+} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLists } from '../contexts/ListsContext';
 import { useChat } from '../contexts/ChatContext';
 import { useAuth } from '../contexts/AuthContext';
 import { usePageSearch } from '../contexts/PageSearchContext';
 import { usePageAddAction } from '../contexts/PageAddActionContext';
+import { useReels } from '../contexts/ReelsContext';
+import { usePosts } from '../contexts/PostsContext';
 import { searchPlacesByText, priceLevelToString, formatLocationLabel, type PlaceResult } from '../lib/places';
 import { getCuisineLabel } from '../pages/useRestaurantDetail';
+
+/**
+ * Maps the current pathname onto an eyebrow + title for the page-context
+ * chip in the header. Keeps DesktopHeader self-contained — adding a new
+ * top-level route is a one-line addition here.
+ */
+function useRouteLabel(pathname: string): { eyebrow: string; title: string } {
+  return useMemo(() => {
+    if (pathname === '/' || pathname === '/index.html') return { eyebrow: 'Home', title: 'Discover' };
+    if (pathname === '/map') return { eyebrow: 'Explore', title: 'Map' };
+    if (pathname === '/reels' || pathname.startsWith('/r/')) return { eyebrow: 'Watch', title: 'Reels' };
+    if (pathname === '/pantry' || pathname.startsWith('/pantry/')) return { eyebrow: 'You', title: 'Pantry' };
+    if (pathname === '/circle') return { eyebrow: 'You', title: 'Circle' };
+    if (pathname === '/profile') return { eyebrow: 'You', title: 'Profile' };
+    if (pathname.startsWith('/activity')) return { eyebrow: 'You', title: 'Activity' };
+    if (pathname === '/experts') return { eyebrow: 'Discover', title: 'Experts' };
+    if (pathname === '/search' || pathname === '/search/main') return { eyebrow: 'Find', title: 'Search' };
+    if (pathname === '/recipes-for-you') return { eyebrow: 'For you', title: 'Recipes' };
+    if (pathname.startsWith('/restaurant/')) return { eyebrow: 'Restaurant', title: 'Details' };
+    if (pathname.startsWith('/user/')) return { eyebrow: 'Profile', title: 'Member' };
+    if (pathname.startsWith('/recipe/') || pathname.startsWith('/meal/')) return { eyebrow: 'Recipe', title: 'Details' };
+    if (pathname.startsWith('/review/')) return { eyebrow: 'Activity', title: 'Review' };
+    if (pathname.startsWith('/location')) return { eyebrow: 'Trip', title: 'Location' };
+    return { eyebrow: 'Page', title: 'Gourmet Canvas' };
+  }, [pathname]);
+}
 
 /**
  * Sticky page header used across every signed-in main page on desktop
@@ -84,11 +126,13 @@ function placeToRecent(place: PlaceResult): RecentSearch {
 export const DesktopHeader: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { toggleWishlist, isWishlisted, openAddRestaurantModal } = useLists();
+  const { toggleWishlist, isWishlisted, openAddRestaurantModal, openHomeMealModal } = useLists();
   const { unreadCount } = useChat();
   const { pendingRequestCount } = useAuth();
   const { scopedSearch, setScopedSearch, focusBump } = usePageSearch();
   const { override: addActionOverride } = usePageAddAction();
+  const { openAddReelModal } = useReels();
+  const { openAddPostModal } = usePosts();
   // True while a page (Pantry) has hijacked this input as a list filter.
   const isScoped = scopedSearch !== null;
 
@@ -99,10 +143,28 @@ export const DesktopHeader: React.FC = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [recents, setRecents] = useState<RecentSearch[]>(() => readRecents());
 
+  // + Add menu state.
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuWrapRef = useRef<HTMLDivElement>(null);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
+  const routeLabel = useRouteLabel(location.pathname);
+
+  // Close + Add menu on outside click or route change.
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (addMenuWrapRef.current && !addMenuWrapRef.current.contains(e.target as Node)) {
+        setAddMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [addMenuOpen]);
+  useEffect(() => { setAddMenuOpen(false); }, [location.pathname]);
 
   // Dropdown position is tracked in viewport coords so we can render it
   // through a portal at <body> level. Renders outside the header's
@@ -265,13 +327,24 @@ export const DesktopHeader: React.FC = () => {
     }
   };
 
-  const isHomeRoute = location.pathname === '/' || location.pathname === '/index.html';
-
   return (
     <header className="sticky top-0 z-40 bg-surface/85 backdrop-blur-md border-b border-on-surface/[0.06]">
-      <div className="px-6 py-3 flex items-center gap-3">
+      <div className="px-6 py-3 flex items-center gap-4">
+        {/* ── Page-context chip (left) ─────────────────────────────
+            Fills the previously-empty left/center band with route-
+            specific orientation: eyebrow + page name. When a page
+            takes over the search via the scoped-search hijack the
+            scope name moves into the chip too so the user always
+            knows what they're searching. */}
+        <div className="hidden md:flex flex-col min-w-0 flex-shrink-0 max-w-[200px]">
+          <span className="section-eyebrow text-[10px] truncate">{routeLabel.eyebrow}</span>
+          <span className="font-serif text-[18px] font-medium leading-tight text-on-surface truncate tracking-tight">
+            {isScoped && scopedSearch ? scopedSearch.scopeName : routeLabel.title}
+          </span>
+        </div>
+
         {/* ── Search input + dropdown ─────────────────────────────── */}
-        <div ref={wrapperRef} className="relative flex-1 max-w-2xl">
+        <div ref={wrapperRef} className="relative flex-1 max-w-md ml-auto">
           <Search size={16} className={cn(
             'absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none',
             isScoped ? 'text-primary' : 'text-on-surface/40',
@@ -351,7 +424,7 @@ export const DesktopHeader: React.FC = () => {
                   }}
                   className={cn(
                     'rounded-2xl bg-surface border border-on-surface/[0.08]',
-                    'shadow-[0_18px_48px_-12px_rgba(0,0,0,0.22)]',
+                    'shadow-[var(--shadow-card-hover)]',
                     'overflow-hidden',
                   )}
                   role="listbox"
@@ -445,30 +518,105 @@ export const DesktopHeader: React.FC = () => {
         </div>
 
         {/* ── Right side actions ─────────────────────────────────── */}
-        <div className="ml-auto flex items-center gap-2">
-          {/* Add CTA — hidden on Discover (the home grid already has +
-              buttons on every card and the search dropdown now exposes
-              one per result). Pages can override the label + click via
-              PageAddActionContext (e.g. Pantry swaps it to "Add Recipe"
-              on recipe views and opens a SearchPopup on restaurant
-              views). When no override is set, it routes to /search/main
-              like before. */}
-          {!isHomeRoute && !(addActionOverride?.hidden) && (
-            <button
-              type="button"
-              onClick={() => {
-                if (addActionOverride) addActionOverride.onClick();
-                else navigate('/search/main');
-              }}
-              className={cn(
-                'inline-flex items-center gap-2 px-4 py-2.5 rounded-full',
-                'bg-primary text-white text-[13px] font-semibold',
-                'hover:bg-primary/90 active:scale-[0.99] transition-all shadow-sm',
-              )}
-            >
-              <Plus size={15} strokeWidth={2.5} />
-              <span>{addActionOverride?.label ?? 'Add Rating'}</span>
-            </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* + Add menu — unified primary CTA on every page. Always shows
+              the same four global add flows; if a page registered a
+              PageAddAction override (e.g. Pantry "Add Recipe to current
+              list"), it appears at the top of the menu as a contextual
+              shortcut so the per-list muscle memory still works. */}
+          {!(addActionOverride?.hidden) && (
+            <div ref={addMenuWrapRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setAddMenuOpen((o) => !o)}
+                aria-haspopup="menu"
+                aria-expanded={addMenuOpen}
+                className={cn(
+                  'inline-flex items-center gap-1.5 pl-3 pr-2 h-10 rounded-full',
+                  'bg-primary text-white text-[13px] font-semibold',
+                  'hover:bg-primary/90 active:scale-[0.99] transition-all shadow-sm',
+                )}
+              >
+                <Plus size={15} strokeWidth={2.5} />
+                <span>Add</span>
+                <ChevronDown
+                  size={14}
+                  className={cn('transition-transform duration-200', addMenuOpen && 'rotate-180')}
+                />
+              </button>
+
+              <AnimatePresence>
+                {addMenuOpen && (
+                  <motion.div
+                    role="menu"
+                    initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                    transition={{ duration: 0.14, ease: 'easeOut' }}
+                    className={cn(
+                      'absolute right-0 top-[calc(100%+0.5rem)] z-50',
+                      'w-[260px] rounded-2xl overflow-hidden',
+                      'bg-surface border border-on-surface/[0.08]',
+                      'shadow-[var(--shadow-card-hover)]',
+                    )}
+                  >
+                    {/* Page-contextual shortcut (Pantry "Add Recipe to All Recipes" etc.) */}
+                    {addActionOverride && (
+                      <>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => { setAddMenuOpen(false); addActionOverride.onClick(); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-on-surface/[0.05] text-left"
+                        >
+                          <span className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                            <Plus size={16} strokeWidth={2.4} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3 leading-tight">
+                              On this page
+                            </span>
+                            <span className="block text-[14px] font-bold leading-tight text-on-surface">
+                              {addActionOverride.label}
+                            </span>
+                          </span>
+                        </button>
+                        <div className="border-t border-on-surface/[0.06]" />
+                      </>
+                    )}
+
+                    <AddMenuItem
+                      icon={<Star size={16} strokeWidth={2.2} />}
+                      title="Rating"
+                      hint="Rate a restaurant you've visited"
+                      tone="primary"
+                      onClick={() => { setAddMenuOpen(false); navigate('/search/main'); }}
+                    />
+                    <div className="border-t border-on-surface/[0.06]" />
+                    <AddMenuItem
+                      icon={<ChefHat size={16} strokeWidth={2.2} />}
+                      title="Recipe"
+                      hint="Log a home-cooked meal or recipe"
+                      onClick={() => { setAddMenuOpen(false); openHomeMealModal(); }}
+                    />
+                    <div className="border-t border-on-surface/[0.06]" />
+                    <AddMenuItem
+                      icon={<Film size={16} strokeWidth={2.2} />}
+                      title="Reel"
+                      hint="Share a single short video"
+                      onClick={() => { setAddMenuOpen(false); openAddReelModal(); }}
+                    />
+                    <div className="border-t border-on-surface/[0.06]" />
+                    <AddMenuItem
+                      icon={<ImageIcon size={16} strokeWidth={2.2} />}
+                      title="Post"
+                      hint="Up to 15 photos and videos"
+                      onClick={() => { setAddMenuOpen(false); openAddPostModal(); }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
 
           <button
@@ -479,7 +627,7 @@ export const DesktopHeader: React.FC = () => {
           >
             <Users size={18} />
             {pendingRequestCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-surface">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-surface">
                 {pendingRequestCount}
               </span>
             )}
@@ -503,6 +651,35 @@ export const DesktopHeader: React.FC = () => {
     </header>
   );
 };
+
+/* ── + Add dropdown menu item ─────────────────────────────────────── */
+const AddMenuItem: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  hint: string;
+  onClick: () => void;
+  tone?: 'default' | 'primary';
+}> = ({ icon, title, hint, onClick, tone = 'default' }) => (
+  <button
+    type="button"
+    role="menuitem"
+    onClick={onClick}
+    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-on-surface/[0.05] text-left"
+  >
+    <span
+      className={cn(
+        'w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0',
+        tone === 'primary' ? 'bg-primary/10 text-primary' : 'bg-on-surface/[0.06] text-on-surface',
+      )}
+    >
+      {icon}
+    </span>
+    <span className="min-w-0 flex-1">
+      <span className="block text-[14px] font-bold leading-tight text-on-surface">{title}</span>
+      <span className="block text-[12px] text-ink-3 leading-tight mt-0.5">{hint}</span>
+    </span>
+  </button>
+);
 
 /* ── Reusable row used for both live results and recent searches ── */
 const SearchRow: React.FC<{
