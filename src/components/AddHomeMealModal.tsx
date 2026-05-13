@@ -741,7 +741,7 @@ export const AddHomeMealModal: React.FC = () => {
                   className="flex flex-col flex-1 min-h-0">
                   <div className="px-6 pt-5 sm:pt-6 pb-3 flex items-center justify-between flex-shrink-0 gap-2">
                     <div className="min-w-0">
-                      <h2 className="font-serif font-bold text-xl truncate">{existing ? 'Update Meal' : 'Log Home Meal'}</h2>
+                      <h2 className="font-bold text-xl truncate">{existing ? 'Update Meal' : 'Log Home Meal'}</h2>
                       {existing && <p className="text-xs text-on-surface/40 truncate mt-0.5">{existing.name}</p>}
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
@@ -1797,7 +1797,7 @@ const SubPage: React.FC<{
       <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-full hover:bg-on-surface/5 text-on-surface/45 hover:text-on-surface transition-colors">
         <ChevronLeft size={22} />
       </button>
-      <h2 className="font-serif font-bold text-lg flex-1">{title}</h2>
+      <h2 className="font-bold text-lg flex-1">{title}</h2>
       {rightAction}
     </div>
     {children}

@@ -627,7 +627,7 @@ export const DesktopHeader: React.FC = () => {
           >
             <Users size={18} />
             {pendingRequestCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-surface">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-persimmon text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-surface">
                 {pendingRequestCount}
               </span>
             )}

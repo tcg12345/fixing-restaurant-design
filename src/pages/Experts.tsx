@@ -283,7 +283,7 @@ export const Experts: React.FC = () => {
                             <Crown size={11} className="text-amber-400" />
                             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">Expert</p>
                           </div>
-                          <h3 className="font-serif text-xl font-bold leading-tight mb-1 truncate">{e.profile.display_name}</h3>
+                          <h3 className="text-xl font-bold leading-tight mb-1 truncate">{e.profile.display_name}</h3>
                           {e.profile.home_city && (
                             <p className="text-[11px] font-semibold text-white/85 truncate flex items-center gap-1 mb-0.5">
                               <MapPin size={10} className="text-white/70" />
@@ -377,7 +377,7 @@ export const Experts: React.FC = () => {
 
         {recentReviews.length > 0 && (
           <section className="mb-12">
-            <h2 className="text-2xl font-serif font-bold mb-8">Latest Expert Reviews</h2>
+            <h2 className="text-2xl font-bold mb-8">Latest Expert Reviews</h2>
             <ul className="divide-y divide-on-surface/[0.08]">
               {recentReviews.map((review) => (
                 <li key={review.id}>
@@ -404,7 +404,7 @@ export const Experts: React.FC = () => {
                     </div>
 
                     <Link to={`/restaurant/${review.restaurant_id}`} className="block group">
-                      <h3 className="font-serif text-2xl font-bold mb-2 leading-tight">{review.restaurant_name}</h3>
+                      <h3 className="text-2xl font-bold mb-2 leading-tight">{review.restaurant_name}</h3>
                       {review.notes && (
                         <div className="relative pl-4">
                           <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-primary/40 rounded-full" />

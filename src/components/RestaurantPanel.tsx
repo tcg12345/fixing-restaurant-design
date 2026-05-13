@@ -47,6 +47,18 @@ import {
   type ExpertRecommendation,
   type UserProfile,
 } from '../lib/supabase-community';
+import { useSettings } from '../contexts/SettingsContext';
+
+/**
+ * Picks the Mapbox style for the current page theme. The detail-page
+ * map and the Discover map both read this so a single toggle in
+ * Settings flips both maps in lockstep.
+ */
+const MAPBOX_LIGHT = 'mapbox://styles/mapbox/light-v11';
+const MAPBOX_DARK = 'mapbox://styles/mapbox/dark-v11';
+function mapboxStyleForTheme(dark: boolean): string {
+  return dark ? MAPBOX_DARK : MAPBOX_LIGHT;
+}
 import type { ReelRestaurantSnapshot } from '../lib/supabase-reels';
 import { getPlaceDetails, type PlaceDetails } from '../lib/places';
 import { MAPBOX_TOKEN, getTodayHours } from '../pages/useRestaurantDetail';
@@ -252,6 +264,7 @@ export const RestaurantPanelBody: React.FC<{
     openAddToListModal,
     getListsForRestaurant,
   } = useLists();
+  const { darkMode } = useSettings();
 
   const myRating = getRating(snapshot.id);
   const wishlisted = isWishlisted(snapshot.id);
@@ -372,11 +385,13 @@ export const RestaurantPanelBody: React.FC<{
     mapboxgl.accessToken = MAPBOX_TOKEN;
     const map = new mapboxgl.Map({
       container: el,
-      // Light style — clean gray cartography that the dark title sits on
-      // top of comfortably. A CSS filter on the container (see JSX) takes
-      // a touch of saturation out so it reads as warm gray rather than
-      // bright. interactive: false keeps it a decorative locator map.
-      style: 'mapbox://styles/mapbox/light-v11',
+      // Theme-driven Mapbox style — light cartography in light mode,
+      // dark cartography in dark mode. A CSS filter on the container
+      // (see JSX) takes a touch of saturation out either way so the
+      // map reads as warm/neutral rather than bright. interactive:
+      // false keeps it a decorative locator map. The flip on dark-
+      // mode toggle is handled by the useEffect below.
+      style: mapboxStyleForTheme(darkMode),
       center: [lng, lat],
       // Zoomed out a notch so the surrounding streets are visible, not just
       // the building footprint. ~12.5 shows ~1 mile across.
@@ -398,6 +413,16 @@ export const RestaurantPanelBody: React.FC<{
       mapInstanceRef.current = null;
     };
   }, [lat, lng]);
+
+  /* ── Flip Mapbox cartography when dark mode toggles. setStyle is
+        the supported runtime swap; markers we added (the clay pin)
+        survive because they live on the Mapbox marker layer, not in
+        the style spec. */
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    map.setStyle(mapboxStyleForTheme(darkMode));
+  }, [darkMode]);
 
   /* ── Hours + contact derived from the details fetch. */
   const phoneHref = details?.phone ? `tel:${details.phone}` : null;
@@ -507,7 +532,7 @@ export const RestaurantPanelBody: React.FC<{
           className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-3.5 text-on-surface"
           style={{ opacity: expandedOpacity, y: expandedY }}
         >
-          <h2 className="font-serif font-bold text-[21px] leading-[1.1] tracking-tight line-clamp-2">
+          <h2 className="font-bold text-[21px] leading-[1.1] tracking-tight line-clamp-2">
             {snapshot.name}
           </h2>
           <p className="text-[12px] text-on-surface/70 mt-0.5 truncate">
@@ -523,7 +548,7 @@ export const RestaurantPanelBody: React.FC<{
           style={{ opacity: compactOpacity }}
         >
           <div className="min-w-0 text-center">
-            <h3 className="font-serif font-bold text-on-surface text-[15px] leading-tight truncate">
+            <h3 className="font-bold text-on-surface text-[15px] leading-tight truncate">
               {snapshot.name}
             </h3>
             <p className="text-[11px] text-on-surface/55 truncate mt-0.5">
@@ -877,7 +902,7 @@ export const RestaurantPanelBody: React.FC<{
               onClick={() => { setGalleryStart(0); setGalleryOpen(true); }}
               className="w-full flex items-baseline justify-between mb-2.5 text-left"
             >
-              <h3 className="font-serif font-bold text-on-surface text-[15px]">Photos</h3>
+              <h3 className="font-bold text-on-surface text-[15px]">Photos</h3>
               <span className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-on-surface/60 hover:text-on-surface transition-colors">
                 See all {communityPhotos.length}
                 <ChevronRight size={13} />
@@ -931,7 +956,7 @@ export const RestaurantPanelBody: React.FC<{
             {topFriendReviews.length > 0 && (
               <section>
                 <div className="flex items-baseline justify-between mb-1.5">
-                  <h3 className="font-serif font-bold text-on-surface text-[15px]">From people you follow</h3>
+                  <h3 className="font-bold text-on-surface text-[15px]">From people you follow</h3>
                   {friends && friends.count > topFriendReviews.length && (
                     <span className="text-[11px] text-on-surface/45">{friends.count} total</span>
                   )}
@@ -960,7 +985,7 @@ export const RestaurantPanelBody: React.FC<{
 
             {experts.length > 0 && (
               <section>
-                <h3 className="font-serif font-bold text-on-surface text-[15px] mb-1.5">Expert picks</h3>
+                <h3 className="font-bold text-on-surface text-[15px] mb-1.5">Expert picks</h3>
                 <div className="divide-y divide-on-surface/[0.06] -mt-1">
                   {experts.slice(0, 3).map((e) => (
                     <ReviewRow

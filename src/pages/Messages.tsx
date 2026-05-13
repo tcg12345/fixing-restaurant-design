@@ -358,7 +358,7 @@ const ShareRestaurantSheet: React.FC<{
           >
             {phoneMode && <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-on-surface/15" /></div>}
             <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-on-surface/6 flex-shrink-0">
-              <h3 className="font-serif font-bold text-lg">Share Restaurant</h3>
+              <h3 className="font-bold text-lg">Share Restaurant</h3>
               <button onClick={onClose} className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center">
                 <X size={16} className="text-on-surface/60" />
               </button>
@@ -499,7 +499,7 @@ const NewChatSheet: React.FC<{
               'flex items-center justify-between flex-shrink-0',
               phoneMode ? 'px-5 pt-3 pb-3 border-b border-on-surface/6' : 'px-6 pt-5 pb-4',
             )}>
-              <h3 className={cn('font-serif font-bold', phoneMode ? 'text-lg' : 'text-[20px]')}>New Chat</h3>
+              <h3 className={cn('font-bold', phoneMode ? 'text-lg' : 'text-[20px]')}>New Chat</h3>
               <button onClick={onClose} className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center hover:bg-on-surface/10 transition-colors">
                 <X size={16} className="text-on-surface/60" />
               </button>
@@ -725,7 +725,7 @@ const ChatView: React.FC<{
           }
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="font-serif font-bold text-base truncate">{getConversationTitle()}</h2>
+          <h2 className="font-bold text-base truncate">{getConversationTitle()}</h2>
           {conversation.isGroup && (
             <p className="text-[10px] text-on-surface/35">{conversation.participantIds.length} members</p>
           )}
@@ -1093,7 +1093,7 @@ export const Messages: React.FC = () => {
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className="text-xl font-serif font-bold tracking-tight">Messages</h1>
+          <h1 className="text-xl font-bold tracking-tight">Messages</h1>
         </div>
         <button onClick={() => setNewChatOpen(true)}
           className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors">

@@ -420,6 +420,57 @@ Every inline `text-[28px] font-serif font-bold` section title is now `<SectionHe
 
 ---
 
+## Phase 5 — Color, typography, dark mode
+
+### Hex literals destroyed
+
+| Was | Where | Now |
+|---|---|---|
+| `linear-gradient(... #fff8f6, transparent)` | `RestaurantDetailMobile.tsx:267` | `var(--color-surface)` |
+| `linear-gradient(... #fff8f6, transparent)` | `RecipeDetail.tsx:138` | `var(--color-surface)` |
+
+The Phase 5-listed set (`#fff8f6`, `#2f3425`, `#d4a373`, `#fef3ec`, `#fbfaf6`) is now empty outside `index.css`. The remaining `#9f3012` / `#e85a2c` references are Mapbox-marker / RadarChart color props that take a literal string — those are out of scope for token-based theming and left as-is.
+
+### Mapbox style — theme-aware
+
+| File | Change |
+|---|---|
+| `RestaurantPanel.tsx` | Added `useSettings()` and a small `mapboxStyleForTheme(dark)` helper. The locator-map style now seeds from `darkMode` and a `useEffect` calls `map.setStyle()` when the user flips the theme — the clay pin marker survives because markers live on the marker layer, not the style spec. |
+| `Discover.tsx` | The user-facing style picker's default state seeds from `darkMode` (`useState(() => darkMode ? 'dark' : 'light')`), and the initial `mapboxgl.Map({ style })` reads from `MAP_STYLES[activeStyle]` instead of hardcoded `light-v11`. User overrides via the picker remain respected for the session. |
+
+### `.glass` dark-mode coverage
+
+Phase 0 rewrote `.glass` to use `color-mix(... var(--color-paper) ...)` so it auto-flips. Phase 5 adds belt-and-suspenders: the `.dark .bg-white, .dark .glass { background-color: var(--color-paper) !important }` block in `index.css:83-91`. In dark mode `.glass` resolves to solid `--color-paper` (the `!important` override beats the translucent `color-mix`); solid reads more legibly against the dark page than 80%-paper.
+
+### Editorial accents — applied
+
+The olive/tan/persimmon tokens were "nearly invisible" before. Phase 5 wires three semantic uses:
+
+| Token | Spot | Decision |
+|---|---|---|
+| `bg-secondary` (olive) | Discover "Recipes For You" → Friend source chip (`r._source === 'friend'`). Was `bg-blue-500/95`. | Friend = "in your circle" semantic — olive is the canonical token. |
+| `bg-primary` (clay) | Same chip block → Expert source chip (`r._source === 'expert'`). Was `bg-secondary/95` from Phase 2. | Experts are the brand authority — moved to the primary clay so it doesn't compete with the friend olive. |
+| `bg-persimmon` | DesktopHeader friend-request notification badge. Was `bg-primary`. | Persimmon is the canonical "new / needs your attention" token; differentiates the action-required badge from the unread-message count which stays clay. |
+| `bg-accent/12 text-ink-2 border border-accent/30` | RestaurantDetailDesktop → Expert Picks → "Highlight Dishes" chips. Was `bg-amber-50 text-amber-800`. | Chef-curated dish chips are the canonical editorial-highlight context — tan tint on the ink ramp so contrast holds in both modes. |
+
+Clay (`bg-primary`) stays the global CTA accent across all phases.
+
+### Typography — redundant `font-serif` stripped
+
+Headings (`h1`–`h6`) inherit `font-serif` from `index.css:123-125`. Inline `className="... font-serif ..."` on heading tags was therefore redundant. A small Python script (saved to `/tmp/strip_font_serif.py` during the run) walked every `.tsx` file, parsed each `<hN>` opening tag (respecting JSX braces and parens), and removed the literal `font-serif` token from its className.
+
+**Sweep result:** 174 redundant `font-serif` removed across 47 files. `grep -rn "<h[1-6][^>]*font-serif"` now returns 0 hits. The token-removal regex was strict (`(?<![\w-])font-serif(?![\w-])`) so it never touched `font-mono` / `font-sans` / `font-display`. No className strings were broken (`tsc --noEmit` post-sweep = baseline 54, no new errors).
+
+### Eyebrow tracking
+
+Phase 0 already locked `.section-eyebrow` to 12px / 0.14em / Mono 700. Phase 3 + 4 migrated inline eyebrow markup on every major page to that class via `<SectionHeader>`. No additional Phase 5 work required.
+
+### Dark-mode visual scan
+
+Flagged for after a desktop browser is available — I have no display surface in this environment. The token-based palette, `.glass` override, and Mapbox style flip should cover the high-traffic paths automatically; any residual contrast/leak issues will surface as Phase 6 follow-ups.
+
+---
+
 ## Open follow-ups
 
 Tracked here so they don't get lost between phases. Items move to "done" or to a deeper phase note as they land.
@@ -428,6 +479,7 @@ Tracked here so they don't get lost between phases. Items move to "done" or to a
 - [x] Phase 2 — Discover wrapped in PageShell, killed the 25%-opacity-watermark "Recommended" cards, two-column desktop layout with sticky DiscoverRail.
 - [x] Phase 3 — `RestaurantDetailDesktop` two-column with sticky right rail; hero gradient → `var(--color-surface)`; replaced inline `#2f3425` / `#d4a373`; section chrome varied; `RestaurantPanel.tsx` height + ScorePill aligned.
 - [x] Phase 4 — Profile / Activity / Experts / Pantry / RecipesForYou / CircleActivity migrated to PageShell + the new primitives; local `EmptyState` in `Activity.tsx` deleted; ExpertCard radius collapsed to `rounded-2xl`; Pantry asymmetric gaps unified to `gap-6`.
+- [x] Phase 5 — Hex literals destroyed; Mapbox cartography flips on `darkMode`; `.glass` covered in the dark-mode override; olive/clay/persimmon/accent applied semantically; 174 redundant `font-serif` removed across 47 files.
 - [ ] Phase 4 follow-up — **Hide DesktopHeader on detail/sub-pages** that render their own sticky `<header>` (Activity, SearchMain, RecipesForYou, UserProfile, FriendReviewDetail, etc. — full list in the Phase 1 audit). Not landed yet; touches `App.tsx`'s `hideHeader` regex.
 - [ ] Phase 5 — Mapbox style switch on `RestaurantPanel.tsx:377` and `Discover.tsx:136-141`; semantic olive / tan / persimmon accents.
 - [ ] Phase 6 — Mobile pass after desktop is solid.

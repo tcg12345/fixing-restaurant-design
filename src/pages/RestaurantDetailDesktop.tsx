@@ -341,7 +341,7 @@ export const RestaurantDetailDesktop: React.FC = () => {
               </p>
               <div className="flex items-start gap-6">
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-4xl lg:text-5xl font-serif font-medium text-on-surface leading-[1.05] tracking-tight">
+                  <h1 className="text-4xl lg:text-5xl font-medium text-on-surface leading-[1.05] tracking-tight">
                     {place.name}
                   </h1>
                   {(() => {
@@ -881,7 +881,7 @@ export const RestaurantDetailDesktop: React.FC = () => {
                           className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-on-surface/[0.015] transition-colors"
                         >
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-serif font-bold text-base truncate">{d.restaurant_name}</h4>
+                            <h4 className="font-bold text-base truncate">{d.restaurant_name}</h4>
                             <p className={cn(
                               'mt-0.5 text-[11px] font-bold uppercase tracking-[0.18em]',
                               d.dining_type === 'restaurant' ? 'text-primary/70' :
@@ -1323,10 +1323,16 @@ export const RestaurantDetailDesktop: React.FC = () => {
                             className="overflow-hidden"
                           >
                             <div className="pt-3">
-                              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-600/70 mb-2">Highlight Dishes</p>
+                              <p className="section-eyebrow text-[11px] mb-2">Highlight dishes</p>
                               <div className="flex flex-wrap gap-1.5">
                                 {rec.highlight_dishes.map((dish) => (
-                                  <span key={dish} className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-800">
+                                  /* Tan/accent tag chip — editorial highlight
+                                     reserved for chef-curated dishes per the
+                                     Phase 5 palette (`--color-accent`). Text
+                                     stays on the ink ramp so contrast holds
+                                     in both light and dark modes; the accent
+                                     supplies the tint via the fill + border. */
+                                  <span key={dish} className="text-xs font-medium px-3 py-1 rounded-full bg-accent/12 text-ink-2 border border-accent/30">
                                     {dish}
                                   </span>
                                 ))}
@@ -1735,7 +1741,7 @@ export const RestaurantDetailDesktop: React.FC = () => {
             >
               <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-on-surface/6 flex-shrink-0">
                 <div>
-                  <h3 className="font-serif font-bold text-lg">Friends' Ratings</h3>
+                  <h3 className="font-bold text-lg">Friends' Ratings</h3>
                   <p className="text-xs text-on-surface/40">{place.name}</p>
                 </div>
                 <button onClick={() => setShowFriendsDetail(false)} className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center">

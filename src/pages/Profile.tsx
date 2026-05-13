@@ -193,7 +193,7 @@ const Top10Section: React.FC<{
 }> = ({ name, total, avg, onSeeAll, children }) => (
   <section>
     <div className="px-5 flex items-baseline justify-between gap-3 mb-3">
-      <h3 className="font-serif font-bold text-on-surface text-[20px] leading-tight min-w-0 truncate">
+      <h3 className="font-bold text-on-surface text-[20px] leading-tight min-w-0 truncate">
         {name}
         <span className="text-on-surface/45 font-normal ml-1.5">
           · {total} place{total === 1 ? '' : 's'} · {avg.toFixed(1)} avg
@@ -451,7 +451,7 @@ const EditTopListsSheet: React.FC<{
               phoneMode ? 'px-5 pt-3 pb-3 border-b border-on-surface/[0.06]' : 'px-6 pt-5 pb-4 border-b border-on-surface/[0.06]',
             )}>
               <div>
-                <h3 className={cn('font-serif font-bold', phoneMode ? 'text-lg' : 'text-[20px]')}>Edit top lists</h3>
+                <h3 className={cn('font-bold', phoneMode ? 'text-lg' : 'text-[20px]')}>Edit top lists</h3>
                 <p className="text-[11.5px] text-on-surface/45 mt-0.5">Remove auto-picked lists or add your own slices.</p>
               </div>
               <button onClick={onClose} className="w-8 h-8 rounded-full bg-on-surface/[0.05] flex items-center justify-center hover:bg-on-surface/10 transition-colors">
@@ -973,7 +973,7 @@ export const Profile: React.FC = () => {
             <div className="flex-1 min-w-0">
               {/* Name + handle */}
               <div className="flex items-baseline gap-2 flex-wrap">
-                <h1 className="text-[26px] lg:text-[32px] font-serif font-medium text-on-surface leading-tight tracking-tight">
+                <h1 className="text-[26px] lg:text-[32px] font-medium text-on-surface leading-tight tracking-tight">
                   {displayName}
                 </h1>
                 <span className="text-[15px] text-ink-3">@{username}</span>
@@ -1204,7 +1204,7 @@ export const Profile: React.FC = () => {
               <section>
                 <div className="px-5 md:px-8 flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0">
-                    <h3 className="font-serif font-bold text-on-surface text-[20px] leading-tight">Recommended guides</h3>
+                    <h3 className="font-bold text-on-surface text-[20px] leading-tight">Recommended guides</h3>
                     <p className="text-[12.5px] text-ink-3 mt-0.5">Curated by people you follow</p>
                   </div>
                   <button
@@ -1369,7 +1369,7 @@ export const Profile: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
               className="bg-surface rounded-3xl p-6 max-w-xs w-full text-center"
             >
-              <h4 className="font-serif font-bold text-on-surface text-lg">Delete reel?</h4>
+              <h4 className="font-bold text-on-surface text-lg">Delete reel?</h4>
               <p className="text-sm text-on-surface/55 mt-1">This permanently removes the video and all of its likes, saves, and comments. It can't be undone.</p>
               <div className="flex gap-2 mt-5">
                 <button type="button" onClick={() => setConfirmDeleteReelId(null)} disabled={deletingReel} className="flex-1 h-11 rounded-full bg-on-surface/[0.06] text-on-surface text-sm font-bold hover:bg-on-surface/[0.1] disabled:opacity-40">Cancel</button>
@@ -1389,7 +1389,7 @@ export const Profile: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
               className="bg-surface rounded-3xl p-6 max-w-xs w-full text-center"
             >
-              <h4 className="font-serif font-bold text-on-surface text-lg">Delete post?</h4>
+              <h4 className="font-bold text-on-surface text-lg">Delete post?</h4>
               <p className="text-sm text-on-surface/55 mt-1">This permanently removes every photo / video and the comments. It can't be undone.</p>
               <div className="flex gap-2 mt-5">
                 <button type="button" onClick={() => setConfirmDeletePostId(null)} disabled={deletingPost} className="flex-1 h-11 rounded-full bg-on-surface/[0.06] text-on-surface text-sm font-bold hover:bg-on-surface/[0.1] disabled:opacity-40">Cancel</button>
@@ -1431,7 +1431,7 @@ export const Profile: React.FC = () => {
                     className="flex flex-col flex-1 overflow-hidden"
                   >
                     <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-on-surface/6 flex-shrink-0">
-                      <h3 className="font-serif font-bold text-lg">Settings</h3>
+                      <h3 className="font-bold text-lg">Settings</h3>
                       <button
                         type="button"
                         onClick={() => setSettingsOpen(false)}
@@ -1582,7 +1582,7 @@ export const Profile: React.FC = () => {
                       <button type="button" onClick={() => setSettingsPage('main')} className="p-1 text-on-surface/40">
                         <ArrowLeft size={20} />
                       </button>
-                      <h3 className="font-serif font-bold text-lg">Edit Profile</h3>
+                      <h3 className="font-bold text-lg">Edit Profile</h3>
                     </div>
                     <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                       <div>
@@ -1678,7 +1678,7 @@ export const Profile: React.FC = () => {
                       <button type="button" onClick={() => setSettingsPage('main')} className="p-1 text-on-surface/40">
                         <ArrowLeft size={20} />
                       </button>
-                      <h3 className="font-serif font-bold text-lg">Account</h3>
+                      <h3 className="font-bold text-lg">Account</h3>
                     </div>
                     <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
                       <div className="bg-on-surface/3 rounded-xl px-3 py-2.5">

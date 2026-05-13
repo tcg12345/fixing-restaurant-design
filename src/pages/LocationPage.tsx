@@ -1551,7 +1551,7 @@ const RestaurantRow: React.FC<RestaurantRowProps> = ({
       >
         <div className="flex items-start gap-4">
           <div className="flex-1 min-w-0">
-            <h3 className="font-serif text-[16px] sm:text-[17px] font-bold text-on-surface leading-snug line-clamp-2">
+            <h3 className="text-[16px] sm:text-[17px] font-bold text-on-surface leading-snug line-clamp-2">
               {place.name}
             </h3>
 
@@ -1679,7 +1679,7 @@ const SuggestionCardView: React.FC<SuggestionCardViewProps> = ({
           </div>
         </div>
         <div className="px-1 pt-2.5">
-          <h3 className="font-serif text-[15px] font-bold text-on-surface leading-snug line-clamp-2">
+          <h3 className="text-[15px] font-bold text-on-surface leading-snug line-clamp-2">
             {place.name}
           </h3>
           <p className="mt-1 text-[11px] text-on-surface/55 font-medium uppercase tracking-wider truncate">
@@ -1735,7 +1735,7 @@ const SuggestionCardView: React.FC<SuggestionCardViewProps> = ({
           )}
         </div>
         <div className="absolute inset-x-3 bottom-3 text-white">
-          <h3 className="font-serif text-base font-bold leading-tight truncate">
+          <h3 className="text-base font-bold leading-tight truncate">
             {profile.display_name || profile.username}
           </h3>
           <p className="text-[10px] text-white/75 truncate mt-0.5">@{profile.username}</p>
@@ -1947,10 +1947,10 @@ const FilterSheet: React.FC<FilterSheetProps> = ({
               phoneMode ? 'px-5 pt-1 pb-3 border-b border-on-surface/[0.06]' : 'px-6 pt-5 pb-4',
             )}>
               <h3 className={cn(
-                phoneMode
-                  ? 'text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface/60'
-                  : 'font-serif font-bold text-[20px]',
-              )}>
+ phoneMode
+ ? 'text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface/60'
+ : 'font-bold text-[20px]',
+ )}>
                 Filters
               </h3>
               <button

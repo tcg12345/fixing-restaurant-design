@@ -446,7 +446,7 @@ export const UserProfile: React.FC = () => {
       <div className="min-h-screen bg-surface">
         <header className="sticky top-0 px-4 py-3 bg-surface/70 backdrop-blur-md z-10 flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-on-surface/50"><ArrowLeft size={20} /></button>
-          <h1 className="font-serif font-bold text-lg">User Not Found</h1>
+          <h1 className="font-bold text-lg">User Not Found</h1>
         </header>
         <div className="text-center py-16">
           <UserCircle size={48} className="mx-auto text-on-surface/15 mb-3" />
@@ -460,7 +460,7 @@ export const UserProfile: React.FC = () => {
     <div className="min-h-screen bg-surface pb-32">
       <header className="sticky top-0 px-4 py-3 bg-surface/70 backdrop-blur-md z-10 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-on-surface/50"><ArrowLeft size={20} /></button>
-        <h1 className="font-serif font-bold text-lg">@{profile.username}</h1>
+        <h1 className="font-bold text-lg">@{profile.username}</h1>
       </header>
 
       <div className="px-3">
@@ -470,7 +470,7 @@ export const UserProfile: React.FC = () => {
             <span className="text-3xl font-serif font-bold text-primary">{profile.display_name.charAt(0).toUpperCase()}</span>
           </div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-serif font-bold">{profile.display_name}</h2>
+            <h2 className="text-xl font-bold">{profile.display_name}</h2>
             {profile.is_expert && <Crown size={18} className="text-amber-500" />}
           </div>
           <p className="text-sm text-on-surface/40">@{profile.username}</p>
@@ -697,7 +697,7 @@ export const UserProfile: React.FC = () => {
                           <Heart size={20} className="text-rose-400 fill-rose-100" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-serif font-bold text-[15px] truncate leading-snug">{w.name}</h3>
+                          <h3 className="font-bold text-[15px] truncate leading-snug">{w.name}</h3>
                           <p className="text-[12px] text-on-surface/45 truncate mt-1">
                             {w.cuisine}{w.price ? ` · ${w.price}` : ''}
                             {w.address && ` · ${w.address.split(',').slice(-1)[0]?.trim()}`}
@@ -742,7 +742,7 @@ export const UserProfile: React.FC = () => {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-serif font-bold text-[15px] truncate leading-snug">{r.restaurant_name}</h3>
+                          <h3 className="font-bold text-[15px] truncate leading-snug">{r.restaurant_name}</h3>
                           <p className="text-[12px] text-on-surface/45 truncate mt-1">
                             {visitLabel}
                             {r.cuisine && `${visitLabel ? ' · ' : ''}${r.cuisine}`}
@@ -830,7 +830,7 @@ export const UserProfile: React.FC = () => {
                             className="block w-full px-3 py-4 hover:bg-on-surface/[0.02] active:scale-[0.99] transition-transform"
                           >
                             <div className="flex items-start justify-between gap-3">
-                              <h3 className="font-serif font-bold text-[15px] leading-snug line-clamp-2 flex-1 text-on-surface">{meal.name}</h3>
+                              <h3 className="font-bold text-[15px] leading-snug line-clamp-2 flex-1 text-on-surface">{meal.name}</h3>
                               {meal.score > 0 ? (
                                 <ScoreBadge rating={meal.score} size="sm" />
                               ) : (
@@ -926,7 +926,7 @@ export const UserProfile: React.FC = () => {
                 'flex items-center justify-between flex-shrink-0',
                 phoneMode ? 'px-5 pt-3 pb-3 border-b border-on-surface/[0.06]' : 'px-6 pt-5 pb-4',
               )}>
-                <h3 className={cn('font-serif font-bold', phoneMode ? 'text-lg' : 'text-[20px]')}>Filters</h3>
+                <h3 className={cn('font-bold', phoneMode ? 'text-lg' : 'text-[20px]')}>Filters</h3>
                 <button onClick={() => setFiltersOpen(false)} className="w-8 h-8 rounded-full bg-on-surface/[0.05] flex items-center justify-center hover:bg-on-surface/[0.10] transition-colors"><X size={16} className="text-on-surface/60" /></button>
               </div>
               {!phoneMode && <div className="border-t border-on-surface/[0.06]" />}
@@ -1025,7 +1025,7 @@ export const UserProfile: React.FC = () => {
             <header className="sticky top-0 px-4 py-3 bg-surface/70 backdrop-blur-md z-10 flex items-center gap-3">
               <button onClick={() => setShowMapPage(false)}
                 className="p-2 -ml-2 text-on-surface/50 hover:text-on-surface"><ArrowLeft size={20} /></button>
-              <h1 className="font-serif font-bold text-lg">{profile.display_name}'s Map</h1>
+              <h1 className="font-bold text-lg">{profile.display_name}'s Map</h1>
             </header>
             <div ref={mapContainerRef} className="flex-1" />
           </motion.div>

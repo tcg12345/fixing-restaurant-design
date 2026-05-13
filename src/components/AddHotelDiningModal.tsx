@@ -119,7 +119,7 @@ export const AddHotelDiningModal: React.FC<Props> = ({
                   className="flex flex-col flex-1 min-h-0">
                   <div className="px-5 pt-5 pb-3 flex items-center justify-between flex-shrink-0">
                     <div>
-                      <h2 className="font-serif font-bold text-lg">Add Dining Option</h2>
+                      <h2 className="font-bold text-lg">Add Dining Option</h2>
                       <p className="text-xs text-on-surface/40">Search for a restaurant or dining venue</p>
                     </div>
                     <button onClick={handleClose} className="p-2 -mr-2 text-on-surface/40 hover:text-on-surface transition-colors">
@@ -190,7 +190,7 @@ export const AddHotelDiningModal: React.FC<Props> = ({
                     <button onClick={() => setStep('search')} className="p-1.5 -ml-1.5 rounded-full hover:bg-on-surface/5 text-on-surface/40 hover:text-on-surface transition-colors">
                       <ChevronLeft size={22} />
                     </button>
-                    <h2 className="font-serif font-bold text-lg flex-1">Select Type</h2>
+                    <h2 className="font-bold text-lg flex-1">Select Type</h2>
                   </div>
 
                   <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5">

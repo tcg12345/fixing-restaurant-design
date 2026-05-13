@@ -43,7 +43,7 @@ export const TopBar: React.FC<TopBarProps> = ({ title = "Gourmet Canvas", rightA
             G
           </div>
         )}
-        <h1 className="text-xl font-serif font-bold tracking-tight">{title}</h1>
+        <h1 className="text-xl font-bold tracking-tight">{title}</h1>
       </div>
       <div className="flex items-center gap-2 text-on-surface/60">
         {rightAction}

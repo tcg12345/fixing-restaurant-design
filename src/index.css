@@ -85,7 +85,8 @@
 .dark .bg-white\/90,
 .dark .bg-white\/85,
 .dark .bg-white\/80,
-.dark .bg-white\/70 {
+.dark .bg-white\/70,
+.dark .glass {
   background-color: var(--color-paper) !important;
 }
 /* Glass / pill backgrounds defined as `bg-on-surface/X` already adapt

@@ -115,7 +115,7 @@ export const Onboarding: React.FC = () => {
             className="flex-1 flex flex-col"
           >
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary mb-2">Palette Test • {currentStep + 1}/{STEPS.length}</p>
-            <h2 className="text-4xl font-serif font-bold mb-12 leading-tight">{STEPS[currentStep].question}</h2>
+            <h2 className="text-4xl font-bold mb-12 leading-tight">{STEPS[currentStep].question}</h2>
 
             {STEPS[currentStep].type === 'image' ? (
               <div className="grid grid-cols-2 gap-4 flex-1">
@@ -138,7 +138,7 @@ export const Onboarding: React.FC = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     <div className="absolute bottom-6 left-6 right-6 text-left">
-                      <h4 className="font-serif font-bold text-xl text-white leading-tight">{option.label}</h4>
+                      <h4 className="font-bold text-xl text-white leading-tight">{option.label}</h4>
                     </div>
                     {selections[currentStep] === option.id && (
                       <div className="absolute top-6 right-6 w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white shadow-xl">

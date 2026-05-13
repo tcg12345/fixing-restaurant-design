@@ -217,7 +217,7 @@ export const RecipesForYou: React.FC = () => {
           </button>
           <ChefHat size={20} className="text-emerald-600" />
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-serif font-semibold text-primary">Explore Recipes</h1>
+            <h1 className="text-lg font-semibold text-primary">Explore Recipes</h1>
             <p className="text-xs text-on-surface/40">
               {loading
                 ? 'Loading...'

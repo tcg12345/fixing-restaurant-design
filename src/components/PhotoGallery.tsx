@@ -97,7 +97,7 @@ export const PhotoGallery: React.FC<{
         <div className="flex-shrink-0 pt-4 pb-2 px-5">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-serif font-bold">Photos</h2>
+              <h2 className="text-base font-bold">Photos</h2>
               <p className="text-[11px] text-on-surface/40 mt-0.5">{allPhotos.length} photo{allPhotos.length !== 1 ? 's' : ''}</p>
             </div>
             <button
@@ -141,7 +141,7 @@ export const PhotoGallery: React.FC<{
           {/* Popular Dishes section */}
           {!searchQuery.trim() && !activeDish && dishGroups.length > 0 && (
             <div className="pb-5">
-              <h3 className="text-sm font-serif font-bold text-on-surface px-5 pb-3">Popular dishes</h3>
+              <h3 className="text-sm font-bold text-on-surface px-5 pb-3">Popular dishes</h3>
               <div className="flex gap-3 overflow-x-auto no-scrollbar px-5 snap-x snap-mandatory">
                 {dishGroups.map((group) => (
                   <button
@@ -180,7 +180,7 @@ export const PhotoGallery: React.FC<{
             <>
               {/* All Photos header */}
               {!searchQuery.trim() && !activeDish && (
-                <h3 className="text-sm font-serif font-bold text-on-surface px-5 pb-3">Photos from members</h3>
+                <h3 className="text-sm font-bold text-on-surface px-5 pb-3">Photos from members</h3>
               )}
 
               {/* Photo grid — 2 columns */}

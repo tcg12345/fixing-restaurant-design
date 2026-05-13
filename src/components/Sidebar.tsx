@@ -148,7 +148,7 @@ export const Sidebar: React.FC = () => {
             G
           </div>
           {!collapsed && (
-            <h1 className="font-serif font-bold text-[17px] text-on-surface leading-tight truncate">
+            <h1 className="font-bold text-[17px] text-on-surface leading-tight truncate">
               Gourmet Canvas
             </h1>
           )}

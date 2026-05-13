@@ -118,7 +118,7 @@ export const Auth: React.FC = () => {
           <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white font-serif italic text-3xl shadow-lg shadow-primary/25 mb-5">
             G
           </div>
-          <h1 className="text-3xl md:text-4xl font-serif font-bold tracking-tight text-on-surface mb-2">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-on-surface mb-2">
             {isSignUpMode ? 'Create Account' : 'Welcome Back'}
           </h1>
           <p className="text-sm text-on-surface/50 max-w-sm font-light">

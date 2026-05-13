@@ -526,7 +526,7 @@ export const AddReelModal: React.FC = () => {
             {/* Header */}
             <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-on-surface/[0.06] flex-shrink-0">
               <div>
-                <h2 className="font-serif font-bold text-lg leading-tight">
+                <h2 className="font-bold text-lg leading-tight">
                   {isEditing ? 'Edit reel' : 'Post a reel'}
                 </h2>
                 <p className="text-[12px] text-on-surface/45 mt-0.5">

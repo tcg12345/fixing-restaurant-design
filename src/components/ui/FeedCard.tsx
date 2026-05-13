@@ -142,7 +142,7 @@ export const FeedCard: React.FC<FeedCardProps> = ({
 
       {overlay && (
         <div className="absolute inset-x-0 bottom-0 p-4 z-10">
-          <h3 className="font-serif text-[17px] font-medium leading-snug text-white tracking-tight line-clamp-2 drop-shadow-md">
+          <h3 className="text-[17px] font-medium leading-snug text-white tracking-tight line-clamp-2 drop-shadow-md">
             {title}
           </h3>
           {subhead && (
@@ -155,7 +155,7 @@ export const FeedCard: React.FC<FeedCardProps> = ({
 
   const metadataBlock = !overlay ? (
     <div className="p-4">
-      <h3 className="font-serif text-[17px] font-medium leading-snug text-on-surface tracking-tight line-clamp-2">
+      <h3 className="text-[17px] font-medium leading-snug text-on-surface tracking-tight line-clamp-2">
         {title}
       </h3>
       {subhead && (

@@ -242,7 +242,7 @@ const ActivityHeader: React.FC<{ title: string; onBack: () => void }> = ({ title
     >
       <ArrowLeft size={18} />
     </button>
-    <h1 className="font-serif font-bold text-on-surface text-[18px] leading-none">{title}</h1>
+    <h1 className="font-bold text-on-surface text-[18px] leading-none">{title}</h1>
   </header>
 );
 

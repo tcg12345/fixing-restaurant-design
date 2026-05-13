@@ -250,7 +250,7 @@ export const CircleActivity: React.FC = () => {
                   </div>
 
                   {/* Restaurant name + cuisine */}
-                  <h3 className="font-serif font-bold text-[17px] leading-snug line-clamp-1">{restaurant.name}</h3>
+                  <h3 className="font-bold text-[17px] leading-snug line-clamp-1">{restaurant.name}</h3>
                   <p className="text-[11px] text-on-surface/45 uppercase tracking-wider mt-0.5 font-semibold">
                     {restaurant.cuisine} · {restaurant.price}
                   </p>
@@ -288,7 +288,7 @@ export const CircleActivity: React.FC = () => {
 
               <div className="flex-shrink-0 px-5 pt-2 pb-3 border-b border-on-surface/6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-serif font-bold">Filters</h2>
+                  <h2 className="text-lg font-bold">Filters</h2>
                   <button onClick={() => setShowFilters(false)}
                     className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center hover:bg-on-surface/10 transition-colors">
                     <X size={16} className="text-on-surface/60" />

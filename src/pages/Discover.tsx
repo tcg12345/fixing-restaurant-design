@@ -373,7 +373,7 @@ interface DiscoverProps {
 export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setHideBottomNav, phoneMode } = useSettings();
+  const { setHideBottomNav, phoneMode, darkMode } = useSettings();
   // Wide viewport (>= lg): the global DesktopHeader provides the
   // search input + actions, so Discover's own TopBar / inline search
   // bar are redundant and would stack on top of it.
@@ -563,7 +563,11 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
     if (navClickRef.current) { navClickRef.current = false; return; }
     setNavHistory([selectedPlace.id]);
   }, [selectedPlace]);
-  const [activeStyle, setActiveStyle] = useState<string>('light');
+  // Seed the Mapbox style from the user's theme preference so the
+  // map matches the rest of the app on first paint. The user can
+  // still override via the style picker; their override is respected
+  // for the remainder of the session.
+  const [activeStyle, setActiveStyle] = useState<string>(() => (darkMode ? 'dark' : 'light'));
   const [showStylePicker, setShowStylePicker] = useState(false);
   const [is3D, setIs3D] = useState(false);
   const [places, setPlaces] = useState<PlaceResult[]>(() => tabDataCache.discoverPlaces);
@@ -1730,9 +1734,15 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
         : [-73.99, 40.735];
     const initialZoom = focusOnlyInit ? 15 : 12.5;
 
+    // Mapbox style comes from MAP_STYLES so the initial render
+    // matches the theme picker's current value (which itself defaults
+    // to the user's light/dark setting). Falls back to light if the
+    // active id ever falls out of sync with the catalog.
+    const initialStyle =
+      MAP_STYLES.find((s) => s.id === activeStyle)?.style ?? MAP_STYLES[0].style;
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/light-v11',
+      style: initialStyle,
       center: initialCenter,
       zoom: initialZoom,
       attributionControl: false,
@@ -2675,7 +2685,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
       >
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
-            <h3 className="font-serif font-bold text-[15.5px] leading-tight text-on-surface truncate">{r.restaurant_name}</h3>
+            <h3 className="font-bold text-[15.5px] leading-tight text-on-surface truncate">{r.restaurant_name}</h3>
             {renderItemMetaLine(r.cuisine, r.price, city)}
             {renderDistanceRow(r.lat, r.lng, opts.extra)}
           </div>
@@ -2728,7 +2738,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
       >
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
-            <h3 className="font-serif font-bold text-[15.5px] leading-tight text-on-surface truncate">{p.name}</h3>
+            <h3 className="font-bold text-[15.5px] leading-tight text-on-surface truncate">{p.name}</h3>
             {renderItemMetaLine(cuisine, price, city)}
             {renderDistanceRow(p.lat, p.lng, extra)}
           </div>
@@ -2770,7 +2780,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
       >
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
-            <h3 className="font-serif font-bold text-[15.5px] leading-tight text-on-surface truncate">{p.name}</h3>
+            <h3 className="font-bold text-[15.5px] leading-tight text-on-surface truncate">{p.name}</h3>
             <div className="flex flex-wrap items-center gap-x-1.5 mt-1 text-[12.5px]">
               <span className="text-teal-700 font-semibold tracking-tight">Hotel</span>
               {price && <span className="text-on-surface/25">·</span>}
@@ -2798,7 +2808,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/meal/${m.userId}/${m.id}`); } }}
         className="cursor-pointer px-4 py-4 transition-colors hover:bg-on-surface/[0.025] outline-none focus-visible:bg-on-surface/[0.04]"
       >
-        <h3 className="font-serif font-bold text-[15.5px] leading-tight text-on-surface truncate">{m.name || 'Untitled meal'}</h3>
+        <h3 className="font-bold text-[15.5px] leading-tight text-on-surface truncate">{m.name || 'Untitled meal'}</h3>
         <div className="flex flex-wrap items-center gap-x-1.5 mt-1 text-[12.5px] text-on-surface/55">
           <span>by {authorName}</span>
           {(m.prepTime || m.cookTime) && (
@@ -2930,7 +2940,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
 
         {/* Single header block: name + a flowing meta row that carries
             cuisine, price, distance and the two route durations. */}
-        <h1 className="font-serif font-bold text-[24px] leading-[1.15] tracking-tight text-on-surface mt-3">
+        <h1 className="font-bold text-[24px] leading-[1.15] tracking-tight text-on-surface mt-3">
           {place.name}
         </h1>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[12.5px] text-on-surface/65">
@@ -3016,7 +3026,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
             >
               <div className="px-5 pt-5 pb-2 flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-serif font-bold text-[20px] text-on-surface leading-tight truncate">
+                  <h2 className="font-bold text-[20px] text-on-surface leading-tight truncate">
                     {activePanelMode.label}
                   </h2>
                   <p className="text-[11.5px] font-medium text-on-surface/45 mt-0.5 tabular-nums">
@@ -3702,7 +3712,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                 )}
               >
                 <div className="min-w-0">
-                  <h3 className={cn("font-serif font-bold", phoneMode ? "text-lg" : "text-[22px] leading-tight tracking-tight")}>Filters</h3>
+                  <h3 className={cn("font-bold", phoneMode ? "text-lg" : "text-[22px] leading-tight tracking-tight")}>Filters</h3>
                   {!phoneMode && (
                     <p className="text-[11px] text-on-surface/40 mt-1">Refine your results</p>
                   )}
@@ -4047,7 +4057,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                     {/* Top: name row with dismiss */}
                     <div className="min-w-0">
                       <div className="flex items-start justify-between gap-1">
-                        <h3 className="font-serif font-bold text-sm leading-tight truncate">{selectedPlace.name}</h3>
+                        <h3 className="font-bold text-sm leading-tight truncate">{selectedPlace.name}</h3>
                         <button onClick={(e) => { e.stopPropagation(); setSelectedPlace(null); setSelectedMarker(null); }}
                           className="w-5 h-5 rounded-full bg-on-surface/8 flex items-center justify-center text-on-surface/40 hover:bg-on-surface/15 transition-colors flex-shrink-0 mt-0.5">
                           <X size={10} />
@@ -4738,8 +4748,8 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                       const cover = r.photos?.[0];
                       const sourceLabel = r._source === 'friend' ? 'From a friend' : r._source === 'expert' ? 'From an expert' : 'Community';
                       const sourceCls =
-                        r._source === 'friend' ? 'bg-blue-500/95 text-white'
-                        : r._source === 'expert' ? 'bg-secondary/95 text-white'
+                        r._source === 'friend' ? 'bg-secondary/95 text-white'
+                        : r._source === 'expert' ? 'bg-primary/95 text-white'
                         : 'bg-white/90 text-on-surface/70';
                       return (
                         <FeedCard
@@ -4770,8 +4780,8 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                       const cover = r.photos?.[0];
                       const sourceLabel = r._source === 'friend' ? 'Friend' : r._source === 'expert' ? 'Chef' : 'Community';
                       const sourceCls =
-                        r._source === 'friend' ? 'bg-blue-500/95 text-white'
-                        : r._source === 'expert' ? 'bg-secondary/95 text-white'
+                        r._source === 'friend' ? 'bg-secondary/95 text-white'
+                        : r._source === 'expert' ? 'bg-primary/95 text-white'
                         : 'bg-white/90 text-on-surface/70';
                       return (
                         <div key={r.id} className="flex-shrink-0 w-[200px] snap-start">
@@ -5069,7 +5079,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                   </div>
                   {/* Info */}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <h3 className="font-serif font-bold text-[14px] leading-snug truncate">{r.restaurant_name}</h3>
+                    <h3 className="font-bold text-[14px] leading-snug truncate">{r.restaurant_name}</h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       {r.cuisine && <span className="text-[10px] font-semibold uppercase tracking-wider text-on-surface/50">{r.cuisine}</span>}
                       {r.cuisine && r.price && <span className="text-on-surface/20">·</span>}
@@ -5112,7 +5122,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                     </div>
                     {/* Info */}
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      <h3 className="font-serif font-bold text-[14px] leading-snug truncate">{r.restaurant_name}</h3>
+                      <h3 className="font-bold text-[14px] leading-snug truncate">{r.restaurant_name}</h3>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {r.cuisine && <span className="text-[10px] font-semibold uppercase tracking-wider text-on-surface/50">{r.cuisine}</span>}
                         {r.cuisine && r.price && <span className="text-on-surface/20">·</span>}
@@ -5157,7 +5167,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                   </div>
                   {/* Info */}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <h3 className="font-serif font-bold text-[14px] leading-snug truncate">{r.restaurant_name}</h3>
+                    <h3 className="font-bold text-[14px] leading-snug truncate">{r.restaurant_name}</h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       {r.cuisine && <span className="text-[10px] font-semibold uppercase tracking-wider text-on-surface/50">{r.cuisine}</span>}
                       {r.cuisine && r.price && <span className="text-on-surface/20">·</span>}
@@ -5213,7 +5223,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                       )}
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      <h3 className="font-serif font-bold text-[14px] leading-snug truncate">{place.name}</h3>
+                      <h3 className="font-bold text-[14px] leading-snug truncate">{place.name}</h3>
                       <p className="text-[10px] text-teal-700 font-semibold uppercase tracking-wider mt-0.5">Hotel</p>
                       {place.rating > 0 && (
                         <div className="flex items-center gap-1 mt-0.5">
@@ -5272,7 +5282,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                         )}
                       </div>
                       <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <h3 className="font-serif font-bold text-[14px] leading-snug truncate">{meal.name}</h3>
+                        <h3 className="font-bold text-[14px] leading-snug truncate">{meal.name}</h3>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {totalLabel && (
                             <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700/80">{totalLabel}</span>
@@ -5324,7 +5334,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                     ) : (
                       <>
                         <div className="flex items-center justify-between pt-2">
-                          <h2 className="text-sm font-serif font-bold">Results</h2>
+                          <h2 className="text-sm font-bold">Results</h2>
                           <span className="text-on-surface/40 text-[10px] font-bold uppercase tracking-widest">{places.length} found</span>
                         </div>
                         <div className="divide-y divide-on-surface/[0.06]">
@@ -5338,7 +5348,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                                   {place.photoUrl ? <img src={place.photoUrl} alt={place.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" /> : <div className="h-full w-full flex items-center justify-center bg-on-surface/5"><MapPinned size={20} className="text-on-surface/20" /></div>}
                                 </div>
                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                  <h3 className="font-serif font-bold text-[14px] leading-snug truncate">{place.name}</h3>
+                                  <h3 className="font-bold text-[14px] leading-snug truncate">{place.name}</h3>
                                   <p className="text-[10px] text-primary/70 font-semibold uppercase tracking-wider mt-0.5">{cuisine}</p>
                                   {place.rating > 0 && <div className="flex items-center gap-1 mt-0.5"><Star size={11} className="fill-primary text-primary" /><span className="text-xs font-bold text-primary">{place.rating.toFixed(1)}</span>{place.priceLevel > 0 && <span className="text-[11px] font-semibold text-on-surface/40 ml-0.5">· {priceLevelToString(place.priceLevel)}</span>}</div>}
                                   <p className="text-[11px] text-on-surface/40 mt-0.5 truncate">{cityState}</p>
@@ -5429,7 +5439,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                               </div>
                               <div className="pt-2 pb-1">
                                 <div className="flex items-start justify-between gap-2">
-                                  <h3 className="font-serif text-[12px] font-bold leading-snug line-clamp-2 flex-1">{place.name}</h3>
+                                  <h3 className="text-[12px] font-bold leading-snug line-clamp-2 flex-1">{place.name}</h3>
                                   {(place as any).rating > 0 && (
                                     <div className="flex items-center gap-0.5 flex-shrink-0 pt-0.5 text-primary">
                                       <Star size={10} className="fill-primary" />
@@ -5462,7 +5472,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                   ) : places.length > 0 ? (
                     <section className="mt-5">
                       <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-base font-serif font-bold">Nearby Restaurants</h2>
+                        <h2 className="text-base font-bold">Nearby Restaurants</h2>
                         <span className="text-on-surface/40 text-[10px] font-bold uppercase tracking-widest">{places.length} found</span>
                       </div>
                       <div className="space-y-3">
@@ -5475,7 +5485,7 @@ export const Discover: React.FC<DiscoverProps> = ({ mode = 'home' }) => {
                                 {place.photoUrl ? <img src={place.photoUrl} alt={place.name} className="h-full w-full object-cover group-hover:scale-105 transition-transform" referrerPolicy="no-referrer" /> : <div className="h-full w-full flex items-center justify-center bg-on-surface/5"><MapPinned size={22} className="text-on-surface/15" /></div>}
                               </div>
                               <div className="flex-1 min-w-0 py-3 pr-3">
-                                <h3 className="font-serif font-bold text-sm leading-snug truncate">{place.name}</h3>
+                                <h3 className="font-bold text-sm leading-snug truncate">{place.name}</h3>
                                 <p className="text-[10px] text-primary/70 font-semibold uppercase tracking-wider mt-0.5">{cuisine}</p>
                                 {place.rating > 0 && (
                                   <div className="flex items-center gap-1 mt-1">

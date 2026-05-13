@@ -152,7 +152,7 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-serif text-[15px] font-bold text-on-surface line-clamp-1 leading-snug">
+          <h3 className="text-[15px] font-bold text-on-surface line-clamp-1 leading-snug">
             {name}
           </h3>
           <p className="mt-0.5 text-xs text-on-surface/55 font-medium uppercase tracking-wider truncate">
@@ -209,7 +209,7 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({
         {/* Bottom title + score row */}
         <div className="absolute inset-x-0 bottom-0 p-4 z-10 flex items-end justify-between gap-3">
           <div className="min-w-0 pointer-events-none">
-            <h3 className="font-serif text-lg font-bold text-white leading-tight drop-shadow-md line-clamp-2">
+            <h3 className="text-lg font-bold text-white leading-tight drop-shadow-md line-clamp-2">
               {name}
             </h3>
             <p className="mt-1 text-xs text-white/85 font-medium uppercase tracking-wider truncate">
@@ -258,7 +258,7 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({
       </div>
 
       <div className="px-3 pt-2.5 pb-3">
-        <h3 className="font-serif text-[15px] sm:text-base font-bold leading-snug text-on-surface line-clamp-2">
+        <h3 className="text-[15px] sm:text-base font-bold leading-snug text-on-surface line-clamp-2">
           {name}
         </h3>
         <p className="mt-1 text-xs text-on-surface/55 font-medium uppercase tracking-wider truncate">

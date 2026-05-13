@@ -95,7 +95,7 @@ export const PhonePantryHome: React.FC<Props> = ({
       <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface/40">
         Your Collection
       </p>
-      <h1 className="font-serif text-[44px] leading-[1.05] mt-1 text-on-surface">
+      <h1 className="text-[44px] leading-[1.05] mt-1 text-on-surface">
         The <span className="italic">{tab === 'restaurants' ? 'Pantry' : 'Cookbook'}</span>
       </h1>
 

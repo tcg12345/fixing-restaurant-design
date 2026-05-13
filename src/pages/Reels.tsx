@@ -1504,7 +1504,7 @@ export const Reels: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-3xl p-6 max-w-xs w-full text-center"
             >
-              <h4 className="font-serif font-bold text-stone-900 text-lg">Delete reel?</h4>
+              <h4 className="font-bold text-stone-900 text-lg">Delete reel?</h4>
               <p className="text-sm text-stone-500 mt-1">This can't be undone.</p>
               <div className="flex gap-2 mt-5">
                 <button type="button" onClick={() => setConfirmDeleteId(null)} className="flex-1 h-11 rounded-full bg-stone-100 text-stone-700 text-sm font-bold hover:bg-stone-200">Cancel</button>
@@ -1524,7 +1524,7 @@ export const Reels: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-3xl p-6 max-w-xs w-full text-center"
             >
-              <h4 className="font-serif font-bold text-stone-900 text-lg">Delete post?</h4>
+              <h4 className="font-bold text-stone-900 text-lg">Delete post?</h4>
               <p className="text-sm text-stone-500 mt-1">This permanently removes every photo / video and the comments. It can't be undone.</p>
               <div className="flex gap-2 mt-5">
                 <button type="button" onClick={() => setConfirmDeletePostId(null)} className="flex-1 h-11 rounded-full bg-stone-100 text-stone-700 text-sm font-bold hover:bg-stone-200">Cancel</button>

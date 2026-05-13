@@ -431,7 +431,7 @@ export const FollowingFeed: React.FC = () => {
                           </div>
                         );
                       })()}
-                      <h4 className="font-serif text-[19px] sm:text-xl font-bold text-on-surface leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                      <h4 className="text-[19px] sm:text-xl font-bold text-on-surface leading-tight line-clamp-2 group-hover:text-primary transition-colors">
                         {r.restaurant_name}
                       </h4>
                       {metaLine && (
@@ -638,7 +638,7 @@ const FollowingFilterSheet: React.FC<{
               'flex items-center justify-between flex-shrink-0',
               phoneMode ? 'px-5 pt-3 pb-3 border-b border-on-surface/[0.06]' : 'px-6 pt-5 pb-4',
             )}>
-              <h3 className={cn('font-serif font-bold', phoneMode ? 'text-lg' : 'text-[20px]')}>Filters</h3>
+              <h3 className={cn('font-bold', phoneMode ? 'text-lg' : 'text-[20px]')}>Filters</h3>
               <button
                 onClick={onClose}
                 className="w-8 h-8 rounded-full bg-on-surface/[0.05] flex items-center justify-center hover:bg-on-surface/[0.10] transition-colors"

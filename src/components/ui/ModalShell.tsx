@@ -112,7 +112,7 @@ export const ModalShell: React.FC<ModalShellProps> = ({
                     <div className="section-eyebrow mb-1.5">{eyebrow}</div>
                   )}
                   {title && (
-                    <h2 className="font-serif text-xl sm:text-2xl font-medium leading-tight tracking-tight text-on-surface">
+                    <h2 className="text-xl sm:text-2xl font-medium leading-tight tracking-tight text-on-surface">
                       {title}
                     </h2>
                   )}
