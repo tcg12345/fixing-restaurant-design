@@ -216,7 +216,7 @@ export const ImportRestaurants: React.FC = () => {
             <ArrowLeft className="w-5 h-5 text-primary" />
           </button>
           <div>
-            <h1 className="text-lg font-serif font-semibold text-primary">Import Restaurants</h1>
+            <h1 className="text-lg font-semibold text-primary">Import Restaurants</h1>
             <p className="text-xs text-muted">Upload a CSV or JSON file</p>
           </div>
         </div>

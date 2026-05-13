@@ -373,7 +373,7 @@ export const Circle: React.FC = () => {
                           <Crown size={11} className="text-amber-400" />
                           <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/70">Expert</p>
                         </div>
-                        <h3 className="font-serif text-lg font-bold leading-tight truncate">{expert.display_name}</h3>
+                        <h3 className="text-lg font-bold leading-tight truncate">{expert.display_name}</h3>
                         {expert.home_city && (
                           <p className="text-[10px] font-semibold text-white/85 mt-0.5 truncate flex items-center gap-1">
                             <MapPin size={9} className="text-white/65" />
@@ -471,7 +471,7 @@ export const Circle: React.FC = () => {
                         </div>
 
                         {/* Restaurant name + cuisine */}
-                        <h3 className="font-serif font-bold text-[17px] leading-snug line-clamp-1">{r.restaurant_name}</h3>
+                        <h3 className="font-bold text-[17px] leading-snug line-clamp-1">{r.restaurant_name}</h3>
                         <p className="text-[11px] text-on-surface/45 uppercase tracking-wider mt-0.5 font-semibold">
                           {r.cuisine}{r.price ? ` · ${r.price}` : ''}
                         </p>
@@ -514,7 +514,7 @@ export const Circle: React.FC = () => {
               className="fixed bottom-0 left-0 right-0 z-[60] bg-surface rounded-t-3xl h-[85vh] flex flex-col overflow-hidden">
               <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-on-surface/15" /></div>
               <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-on-surface/6 flex-shrink-0">
-                <h3 className="font-serif font-bold text-lg">Find Friends</h3>
+                <h3 className="font-bold text-lg">Find Friends</h3>
                 <button onClick={() => setAddSheetOpen(false)} className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center">
                   <X size={16} className="text-on-surface/60" />
                 </button>

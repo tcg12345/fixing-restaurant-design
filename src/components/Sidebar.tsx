@@ -1,7 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Compass, Map as MapIcon, Bookmark, Users, User, Plus, MessageCircle, Film, Image as ImageIcon } from 'lucide-react';
+import {
+  Compass,
+  Map as MapIcon,
+  Bookmark,
+  Users,
+  User,
+  Plus,
+  MessageCircle,
+  Film,
+  Image as ImageIcon,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { useLists } from '../contexts/ListsContext';
@@ -10,18 +22,25 @@ import { useReels } from '../contexts/ReelsContext';
 import { usePosts } from '../contexts/PostsContext';
 
 /**
- * Desktop-only collapsible sidebar. App.tsx decides when to mount it
- * (wide viewports, signed in, not in phone-frame preview).
+ * Desktop-only persistent sidebar.
+ *
+ * App.tsx mounts this on wide viewports (>=1024px) when signed in. The
+ * previous build collapsed on mouse-leave, which produced a jittery
+ * "constantly springing back and forth" feel — so the rail is now
+ * persistent-expanded by default. Users can manually collapse to an
+ * icon-only rail via the toggle in the header (saved to localStorage).
  *
  *  ┌──────────────────┐
- *  │ logo · app name  │
+ *  │ logo · brand  ‹  │  (chevron toggles collapse)
  *  │ ─────────────────│
- *  │  + New Rating    │
+ *  │  + Create        │
  *  │ ─────────────────│
  *  │ • Discover       │
  *  │ • Map            │
+ *  │ • Reels          │
  *  │ • Pantry         │
  *  │ • Circle         │
+ *  │ • Messages       │
  *  │ • Profile        │
  *  │ ─────────────────│
  *  │ avatar · name    │
@@ -30,6 +49,22 @@ import { usePosts } from '../contexts/PostsContext';
 
 export const SIDEBAR_EXPANDED_WIDTH = 264;
 export const SIDEBAR_COLLAPSED_WIDTH = 72;
+const COLLAPSE_KEY = 'gourmet-canvas-sidebar-collapsed';
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function writeCollapsed(v: boolean) {
+  try {
+    localStorage.setItem(COLLAPSE_KEY, v ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+}
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -39,29 +74,22 @@ export const Sidebar: React.FC = () => {
   const { openAddReelModal } = useReels();
   const { openAddPostModal } = usePosts();
 
-  // The rail is always collapsed by default. Hover expands it; leaving
-  // collapses it again. We don't persist this — the rail is hover-driven
-  // every session. A small "leave delay" prevents the rail from snapping
-  // shut when the cursor briefly grazes outside the bounds.
-  const [hovered, setHovered] = useState(false);
-  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // User-controlled collapse state. Persists across sessions in
+  // localStorage so reopening the app on the same machine restores the
+  // user's choice. Defaults to expanded — the previous hover-collapse
+  // behavior was actively disliked.
+  const [collapsed, setCollapsed] = useState<boolean>(() => readCollapsed());
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      writeCollapsed(next);
+      return next;
+    });
+  };
+
   // Create menu — small popover anchored to the Create button.
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const createWrapRef = useRef<HTMLDivElement>(null);
-
-  // Keep the rail expanded while a popover is open (otherwise it'd snap
-  // shut underneath the cursor when the user moves onto a menu item
-  // anchored to the rail).
-  const collapsed = !(hovered || createMenuOpen);
-
-  const onAsideMouseEnter = () => {
-    if (leaveTimerRef.current) { clearTimeout(leaveTimerRef.current); leaveTimerRef.current = null; }
-    setHovered(true);
-  };
-  const onAsideMouseLeave = () => {
-    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
-    leaveTimerRef.current = setTimeout(() => setHovered(false), 120);
-  };
 
   useEffect(() => {
     if (!createMenuOpen) return;
@@ -102,8 +130,6 @@ export const Sidebar: React.FC = () => {
     <motion.aside
       animate={{ width }}
       transition={{ type: 'spring', damping: 28, stiffness: 280, mass: 0.9 }}
-      onMouseEnter={onAsideMouseEnter}
-      onMouseLeave={onAsideMouseLeave}
       className={cn(
         'h-screen sticky top-0 flex-shrink-0 border-r border-on-surface/[0.07] bg-surface',
         'flex flex-col z-30',
@@ -111,27 +137,42 @@ export const Sidebar: React.FC = () => {
       aria-label="Primary"
     >
       {/* ── Header: logo + brand + collapse toggle ─────────────────────── */}
-      <div className={cn(
-        'flex items-center pt-5 pb-4 gap-3',
-        collapsed ? 'flex-col gap-2 px-3' : 'px-5',
-      )}>
+      <div
+        className={cn(
+          'flex items-center pt-5 pb-4 gap-3 px-4',
+          collapsed && 'flex-col gap-2',
+        )}
+      >
         <div className={cn('flex items-center gap-3 min-w-0', !collapsed && 'flex-1')}>
           <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-serif italic text-lg flex-shrink-0">
             G
           </div>
           {!collapsed && (
-            <h1 className="font-serif font-bold text-[17px] text-on-surface leading-tight truncate">
+            <h1 className="font-bold text-[17px] text-on-surface leading-tight truncate">
               Gourmet Canvas
             </h1>
           )}
         </div>
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-pressed={collapsed}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className={cn(
+            'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
+            'text-on-surface/45 hover:text-on-surface hover:bg-on-surface/[0.06] transition-colors',
+          )}
+        >
+          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+        </button>
       </div>
 
-      <div className="border-t border-on-surface/[0.06] mx-3" />
+      <div className="border-t border-on-surface/[0.06] mx-4" />
 
       {/* ── Create CTA — single red button that opens a small menu with
               Post and Reel choices. */}
-      <div ref={createWrapRef} className={cn('relative px-3 pt-4 pb-3', collapsed && 'px-2')}>
+      <div ref={createWrapRef} className="relative px-4 pt-4 pb-3">
         <button
           type="button"
           onClick={() => setCreateMenuOpen((o) => !o)}
@@ -143,7 +184,7 @@ export const Sidebar: React.FC = () => {
             'w-full bg-primary text-white rounded-full font-semibold text-sm',
             'flex items-center justify-center gap-2',
             'shadow-sm hover:bg-primary/90 active:scale-[0.99] transition-all',
-            collapsed ? 'h-11 px-0' : 'h-11 px-4',
+            'h-11 px-4',
           )}
         >
           <Plus
@@ -163,24 +204,25 @@ export const Sidebar: React.FC = () => {
               exit={{ opacity: 0, y: -4, scale: 0.97 }}
               transition={{ duration: 0.14, ease: 'easeOut' }}
               className={cn(
-                'absolute z-40 rounded-2xl bg-surface border border-on-surface/[0.08] shadow-xl overflow-hidden',
+                'absolute z-40 rounded-2xl bg-surface border border-on-surface/[0.08] overflow-hidden',
+                'shadow-[var(--shadow-card-hover)]',
                 collapsed
                   ? 'left-full top-2 ml-2 min-w-[200px]'
-                  : 'left-3 right-3 top-[calc(100%-0.25rem)]',
+                  : 'left-4 right-4 top-[calc(100%-0.25rem)]',
               )}
             >
               <button
                 type="button"
                 role="menuitem"
                 onClick={() => { setCreateMenuOpen(false); openAddPostModal(); }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-on-surface/[0.05] text-left"
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-on-surface/[0.05] text-left"
               >
                 <span className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
                   <ImageIcon size={16} strokeWidth={2.2} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[14px] font-bold leading-tight">Post</span>
-                  <span className="block text-[12px] text-on-surface/50 leading-tight">Up to 15 photos & videos</span>
+                  <span className="block text-[12px] text-ink-3 leading-tight">Up to 15 photos & videos</span>
                 </span>
               </button>
               <div className="border-t border-on-surface/[0.06]" />
@@ -188,14 +230,14 @@ export const Sidebar: React.FC = () => {
                 type="button"
                 role="menuitem"
                 onClick={() => { setCreateMenuOpen(false); openAddReelModal(); }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-on-surface/[0.05] text-left"
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-on-surface/[0.05] text-left"
               >
                 <span className="w-9 h-9 rounded-xl bg-on-surface/[0.06] text-on-surface flex items-center justify-center flex-shrink-0">
                   <Film size={16} strokeWidth={2.2} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[14px] font-bold leading-tight">Reel</span>
-                  <span className="block text-[12px] text-on-surface/50 leading-tight">Single short video</span>
+                  <span className="block text-[12px] text-ink-3 leading-tight">Single short video</span>
                 </span>
               </button>
             </motion.div>
@@ -204,7 +246,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* ── Nav list ───────────────────────────────────────────────────── */}
-      <nav className={cn('flex-1 overflow-y-auto pt-2 pb-3', collapsed ? 'px-2' : 'px-3')}>
+      <nav className="flex-1 overflow-y-auto pt-2 pb-3 px-4">
         <ul className="space-y-1">
           {/* Discover */}
           <li>
@@ -284,13 +326,13 @@ export const Sidebar: React.FC = () => {
         </ul>
       </nav>
 
-      {/* ── Footer: profile snapshot + collapse toggle ─────────────────── */}
-      <div className="border-t border-on-surface/[0.06] mx-3" />
-      <div className={cn('px-3 py-3 flex items-center gap-3', collapsed && 'flex-col gap-2 px-2')}>
+      {/* ── Footer: profile snapshot ───────────────────────────────────── */}
+      <div className="border-t border-on-surface/[0.06] mx-4" />
+      <div className={cn('px-4 py-3 flex items-center gap-3', collapsed && 'flex-col gap-2')}>
         <NavLink
           to="/profile"
           className={cn(
-            'flex items-center gap-3 min-w-0 rounded-xl flex-1',
+            'flex items-center gap-3 min-w-0 rounded-2xl flex-1',
             collapsed ? 'flex-col gap-1' : 'p-2 hover:bg-on-surface/[0.04] transition-colors',
           )}
           title={profile?.display_name || 'Profile'}
@@ -303,7 +345,7 @@ export const Sidebar: React.FC = () => {
               <p className="text-[13px] font-bold text-on-surface leading-tight truncate">
                 {profile?.display_name || profile?.username || 'You'}
               </p>
-              <p className="text-[11px] text-on-surface/45 leading-tight truncate">
+              <p className="text-[11px] text-ink-3 leading-tight truncate">
                 {ratingCount} rating{ratingCount === 1 ? '' : 's'}
               </p>
             </div>

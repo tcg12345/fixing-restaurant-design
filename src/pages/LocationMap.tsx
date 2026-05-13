@@ -456,7 +456,7 @@ export const LocationMap: React.FC = () => {
                         className="flex items-start gap-3 py-3 px-1"
                       >
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-serif text-[15px] font-bold text-on-surface line-clamp-1">
+                          <h3 className="text-[15px] font-bold text-on-surface line-clamp-1">
                             {place.name}
                           </h3>
                           <p className="mt-0.5 text-[11px] text-on-surface/55 font-medium uppercase tracking-wider truncate">

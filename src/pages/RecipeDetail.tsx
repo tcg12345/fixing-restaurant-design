@@ -135,7 +135,7 @@ export const RecipeDetail: React.FC = () => {
             <div className="absolute inset-x-0 bottom-0 h-1/2 pointer-events-none"
               style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.45) 40%, rgba(0,0,0,0.1) 75%, transparent 100%)' }} />
             <div className="absolute inset-x-0 bottom-0 h-8 pointer-events-none"
-              style={{ background: 'linear-gradient(to top, #fff8f6, transparent)' }} />
+              style={{ background: 'linear-gradient(to top, var(--color-surface), transparent)' }} />
           </>
         )}
 
@@ -169,7 +169,7 @@ export const RecipeDetail: React.FC = () => {
         {/* Title overlay */}
         {heroPhoto && (
           <div className="absolute bottom-10 left-5 right-5 z-10 pointer-events-none">
-            <h1 className="text-2xl font-serif font-bold text-white leading-tight mb-1.5 drop-shadow-lg">{recipe.title}</h1>
+            <h1 className="text-2xl font-bold text-white leading-tight mb-1.5 drop-shadow-lg">{recipe.title}</h1>
             <div className="flex items-center gap-2 flex-wrap">
               {recipe.cuisine && <span className="text-[11px] font-semibold text-white/90 uppercase tracking-wider">{recipe.cuisine}</span>}
               {recipe.difficulty && (
@@ -199,7 +199,7 @@ export const RecipeDetail: React.FC = () => {
         {/* Title (when no hero photo) */}
         {!heroPhoto && (
           <div className="mb-4">
-            <h1 className="text-3xl font-serif font-bold text-on-surface leading-tight mb-1">{recipe.title}</h1>
+            <h1 className="text-3xl font-bold text-on-surface leading-tight mb-1">{recipe.title}</h1>
             <div className="flex items-center gap-2 flex-wrap">
               {recipe.cuisine && <span className="text-[11px] font-semibold text-on-surface/50 uppercase tracking-wider">{recipe.cuisine}</span>}
               {recipe.difficulty && (
@@ -249,7 +249,7 @@ export const RecipeDetail: React.FC = () => {
 
         {/* ── Ingredients ── */}
         <section id="ingredients" className="mb-10 scroll-mt-20">
-          <h2 className="font-serif font-bold text-2xl text-on-surface mb-4">Ingredients</h2>
+          <h2 className="font-bold text-2xl text-on-surface mb-4">Ingredients</h2>
           {recipe.ingredients.length > 0 ? (
             <RecipeIngredientList
               recipeKey={recipe.id}
@@ -271,7 +271,7 @@ export const RecipeDetail: React.FC = () => {
 
         {/* ── Directions ── */}
         <section id="directions" className="mb-10 scroll-mt-20">
-          <h2 className="font-serif font-bold text-2xl text-on-surface mb-4">Directions</h2>
+          <h2 className="font-bold text-2xl text-on-surface mb-4">Directions</h2>
           {recipe.steps.length > 0 ? (
             <RecipeDirectionsList steps={recipe.steps.map((s) => s.text)} />
           ) : (
@@ -286,7 +286,7 @@ export const RecipeDetail: React.FC = () => {
         {/* ── Notes (description) ── */}
         {recipe.description && (
           <section id="notes" className="mb-10 scroll-mt-20">
-            <h2 className="font-serif font-bold text-2xl text-on-surface mb-3">Notes</h2>
+            <h2 className="font-bold text-2xl text-on-surface mb-3">Notes</h2>
             <blockquote className="relative bg-amber-50/60 border-l-4 border-amber-400 rounded-r-xl px-5 py-4">
               <p className="italic font-serif text-on-surface/75 leading-[1.7] text-[15px] whitespace-pre-wrap">
                 {recipe.description}
@@ -298,7 +298,7 @@ export const RecipeDetail: React.FC = () => {
         {/* ── Tags ── */}
         {recipe.tags.length > 0 && (
           <section className="mb-10">
-            <h2 className="font-serif font-bold text-base text-on-surface flex items-center gap-2 mb-3">
+            <h2 className="font-bold text-base text-on-surface flex items-center gap-2 mb-3">
               <Tag size={16} className="text-primary/50" /> Tags
             </h2>
             <div className="flex flex-wrap gap-1.5">
@@ -312,7 +312,7 @@ export const RecipeDetail: React.FC = () => {
         {/* ── Photos gallery ── */}
         {recipe.photos.length > 1 && (
           <section className="mb-10">
-            <h2 className="font-serif font-bold text-2xl text-on-surface mb-4">Photos</h2>
+            <h2 className="font-bold text-2xl text-on-surface mb-4">Photos</h2>
             <div className="grid grid-cols-3 gap-1.5">
               {recipe.photos.slice(1).map((photo, idx) => (
                 <button key={idx} onClick={() => { setGalleryIdx(idx + 1); setGalleryOpen(true); }}
@@ -326,7 +326,7 @@ export const RecipeDetail: React.FC = () => {
 
         {/* ── Reviews ── */}
         <section id="reviews" className="mb-10 scroll-mt-20">
-          <h2 className="font-serif font-bold text-2xl text-on-surface mb-4">Reviews</h2>
+          <h2 className="font-bold text-2xl text-on-surface mb-4">Reviews</h2>
           {reviews.length > 0 ? (
             <RecipeReviewList
               reviews={reviews}

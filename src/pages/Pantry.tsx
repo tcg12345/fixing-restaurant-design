@@ -174,7 +174,7 @@ const CreateListSheet: React.FC<{
             className={cn("bg-surface w-full overflow-hidden flex flex-col", phoneMode ? "h-full rounded-none" : "h-full sm:h-auto sm:max-w-md sm:max-h-[75vh] rounded-none sm:rounded-3xl")}
           >
             <div className="flex items-center justify-between px-5 pt-4 sm:pt-5 pb-3 flex-shrink-0">
-              <h2 className="font-serif font-bold text-lg">
+              <h2 className="font-bold text-lg">
                 {mode === 'browse'
                   ? kind === 'recipes' ? 'New Recipe List' : 'New List'
                   : kind === 'recipes' ? 'Create Custom Recipe List' : 'Create Custom List'}
@@ -240,7 +240,7 @@ const CreateListSheet: React.FC<{
                   ) : (
                     categoriesForKind.filter((cat) => groupedPresets[cat]).map((category) => (
                       <div key={category} className="mb-6">
-                        <h3 className="font-serif font-bold text-base text-on-surface/80 mb-2 px-1">{category}</h3>
+                        <h3 className="font-bold text-base text-on-surface/80 mb-2 px-1">{category}</h3>
                         <div className="divide-y divide-on-surface/[0.06]">
                           {groupedPresets[category].map((preset) => {
                             const alreadyExists = existingNamesLower.has(preset.name.toLowerCase());
@@ -351,7 +351,7 @@ const AddFromRatedSheet: React.FC<{
             className={cn("bg-surface w-full overflow-hidden flex flex-col", phoneMode ? "h-full rounded-none" : "h-full sm:h-auto sm:max-w-md sm:max-h-[70vh] rounded-none sm:rounded-3xl")}
           >
             <div className="flex items-center justify-between px-5 pt-4 sm:pt-5 pb-3 flex-shrink-0">
-              <h2 className="font-serif font-bold text-lg">Add Rated Restaurants</h2>
+              <h2 className="font-bold text-lg">Add Rated Restaurants</h2>
               <button onClick={onClose} className="p-2 -mr-2 text-on-surface/40 hover:text-on-surface transition-colors"><X size={20} /></button>
             </div>
             <div className="px-5 pb-3">
@@ -584,7 +584,7 @@ const RestaurantRow: React.FC<{
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-serif font-bold text-[15px] leading-tight truncate">{name}</h3>
+                  <h3 className="font-bold text-[15px] leading-tight truncate">{name}</h3>
                   <p className="mt-0.5 text-[11px] text-on-surface/50 font-semibold uppercase tracking-wider truncate">
                     {cuisine === 'Hotel Breakfast' ? 'Hotel' : cuisine}{cuisine !== 'Hotel Breakfast' && price ? ` · ${price}` : ''}
                   </p>
@@ -698,7 +698,7 @@ const WishlistRow: React.FC<{
       <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch">
         <div>
           <Link to={`/restaurant/${restaurantId}`}>
-            <h3 className="font-serif font-bold text-[15px] leading-snug line-clamp-2">{name}</h3>
+            <h3 className="font-bold text-[15px] leading-snug line-clamp-2">{name}</h3>
           </Link>
           <p className="text-[11px] text-on-surface/50 font-semibold uppercase tracking-wider mt-0.5">
             {cuisine === 'Hotel Breakfast' ? 'Hotel' : cuisine}{cuisine !== 'Hotel Breakfast' && price ? ` · ${price}` : ''}
@@ -779,7 +779,7 @@ const WishlistGridCard: React.FC<{
       >
         {/* Top row: name + heart pip (also the remove control) */}
         <div className="flex items-start justify-between gap-4">
-          <h3 className="font-serif font-bold text-[22px] leading-tight tracking-tight text-on-surface line-clamp-2 min-w-0">
+          <h3 className="font-bold text-[22px] leading-tight tracking-tight text-on-surface line-clamp-2 min-w-0">
             {name}
           </h3>
           {onRemove ? (
@@ -914,7 +914,7 @@ const RestaurantGridCard: React.FC<{
         >
           {/* Top row: name + score */}
           <div className="flex items-start justify-between gap-4">
-            <h3 className="font-serif font-bold text-[22px] leading-tight tracking-tight text-on-surface line-clamp-2 min-w-0">
+            <h3 className="font-bold text-[22px] leading-tight tracking-tight text-on-surface line-clamp-2 min-w-0">
               {name}
             </h3>
             {hasScore && <ScoreBadge rating={score!} size="lg" />}
@@ -1026,7 +1026,7 @@ const RestaurantGridCard: React.FC<{
       <div className="pt-2.5 pb-1">
         <div className="flex items-start justify-between gap-2">
           <Link to={`/restaurant/${restaurantId}`} className="min-w-0 flex-1">
-            <h3 className="font-serif font-bold text-[15px] leading-snug line-clamp-2">{name}</h3>
+            <h3 className="font-bold text-[15px] leading-snug line-clamp-2">{name}</h3>
           </Link>
           <div className="flex items-center gap-0.5 flex-shrink-0 pt-0.5">
             {hasScore && <ScoreBadge rating={score!} size="xs" />}
@@ -1088,7 +1088,7 @@ const HotelSubPage: React.FC<{
       <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-full hover:bg-on-surface/5 text-on-surface/40 hover:text-on-surface transition-colors">
         <ArrowLeft size={20} />
       </button>
-      <h2 className="font-serif font-bold text-lg flex-1">{title}</h2>
+      <h2 className="font-bold text-lg flex-1">{title}</h2>
       {rightAction}
     </div>
     {children}
@@ -1285,7 +1285,7 @@ const AddHotelBreakfastModal: React.FC<{
                 className="flex flex-col flex-1 min-h-0">
                 <div className="px-5 pt-4 sm:pt-5 pb-2 flex items-center justify-between flex-shrink-0">
                   <div className="min-w-0">
-                    <h2 className="font-serif font-bold text-lg">Find a Hotel</h2>
+                    <h2 className="font-bold text-lg">Find a Hotel</h2>
                     <p className="text-xs text-on-surface/40">Search for the hotel you stayed at</p>
                   </div>
                   <button onClick={onClose} className="p-2 -mr-2 text-on-surface/40 hover:text-on-surface transition-colors"><X size={20} /></button>
@@ -1352,7 +1352,7 @@ const AddHotelBreakfastModal: React.FC<{
                 className="flex flex-col flex-1 min-h-0">
                 <div className="px-5 pt-4 sm:pt-5 pb-2 flex items-center justify-between flex-shrink-0">
                   <div className="min-w-0">
-                    <h2 className="font-serif font-bold text-lg truncate">{existing ? 'Update Rating' : 'Rate Breakfast'}</h2>
+                    <h2 className="font-bold text-lg truncate">{existing ? 'Update Rating' : 'Rate Breakfast'}</h2>
                     <p className="text-xs text-on-surface/40 truncate">{selectedHotel?.name}</p>
                   </div>
                   <button onClick={onClose} className="p-2 -mr-2 text-on-surface/40 hover:text-on-surface transition-colors"><X size={20} /></button>
@@ -2350,7 +2350,7 @@ const ListDetailView: React.FC<{
                 <Star size={14} className="text-primary" />
                 <h3 className="text-xs font-bold uppercase tracking-widest text-on-surface/50">Rated ({ratedRestaurants.length})</h3>
               </div>
-              <div className={viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-6 items-start" : "divide-y divide-on-surface/[0.06]"}>
+              <div className={viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start" : "divide-y divide-on-surface/[0.06]"}>
                 {ratedRestaurants.map(({ id, info, rating }) => viewMode === 'grid' ? (
                   <RestaurantGridCard
                     key={id}
@@ -2425,7 +2425,7 @@ const ListDetailView: React.FC<{
                 <h3 className="text-xs font-bold uppercase tracking-widest text-on-surface/50">Wishlist ({wishlistedRestaurantsFinal.length}{isWishlistView && wishlistedRestaurantsFinal.length !== wishlistedRestaurantsRaw.length ? ` of ${wishlistedRestaurantsRaw.length}` : ''})</h3>
               </div>
               {viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-6 items-start">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
                   {wishlistedRestaurantsFinal.map(({ id, info, wishItem }) => (
                     <WishlistGridCard
                       key={id}
@@ -2603,7 +2603,7 @@ const FilterSheet: React.FC<{
               'flex items-center justify-between flex-shrink-0',
               phoneMode ? 'px-5 pt-3 pb-3 border-b border-on-surface/[0.06]' : 'px-6 pt-5 pb-4',
             )}>
-              <h3 className={cn('font-serif font-bold', phoneMode ? 'text-lg' : 'text-[20px]')}>Filters</h3>
+              <h3 className={cn('font-bold', phoneMode ? 'text-lg' : 'text-[20px]')}>Filters</h3>
               <button onClick={onClose} className="w-8 h-8 rounded-full bg-on-surface/[0.05] flex items-center justify-center hover:bg-on-surface/[0.10] transition-colors">
                 <X size={16} className="text-on-surface/60" />
               </button>
@@ -2834,7 +2834,7 @@ const WishlistFilterSheet: React.FC<{
                   <SlidersHorizontal size={15} />
                 </div>
                 <div>
-                  <h3 className={cn('font-serif font-bold leading-tight', phoneMode ? 'text-lg' : 'text-[20px]')}>Filter wishlist</h3>
+                  <h3 className={cn('font-bold leading-tight', phoneMode ? 'text-lg' : 'text-[20px]')}>Filter wishlist</h3>
                   {activeCount > 0 && (
                     <p className="text-[11px] text-on-surface/45 font-medium">
                       {activeCount} active filter{activeCount === 1 ? '' : 's'}
@@ -3203,7 +3203,7 @@ const AddToNightSheet: React.FC<{
                 className="flex flex-col flex-1 min-h-0">
                 <div className="px-5 pt-4 pb-3 flex items-center justify-between flex-shrink-0">
                   <div>
-                    <h2 className="font-serif font-bold text-lg">Add to Night {nightIndex + 1}</h2>
+                    <h2 className="font-bold text-lg">Add to Night {nightIndex + 1}</h2>
                     <p className="text-xs text-on-surface/40">{nightDate}</p>
                   </div>
                   <button onClick={onClose} className="p-2 -mr-2 text-on-surface/40 hover:text-on-surface transition-colors"><X size={20} /></button>
@@ -3275,7 +3275,7 @@ const AddToNightSheet: React.FC<{
                 className="flex flex-col h-full">
                 <div className="px-5 pt-4 pb-3 flex items-center gap-3 flex-shrink-0 border-b border-on-surface/6">
                   <button onClick={() => setPage('select')} className="p-1.5 -ml-1.5 rounded-full hover:bg-on-surface/5 text-on-surface/40"><ChevronLeft size={22} /></button>
-                  <h2 className="font-serif font-bold text-lg flex-1">From My Ratings</h2>
+                  <h2 className="font-bold text-lg flex-1">From My Ratings</h2>
                 </div>
 
                 <div className="px-5 pt-3 pb-2 flex-shrink-0">
@@ -3344,7 +3344,7 @@ const AddToNightSheet: React.FC<{
                 className="flex flex-col h-full">
                 <div className="px-5 pt-4 pb-3 flex items-center gap-3 flex-shrink-0 border-b border-on-surface/6">
                   <button onClick={() => setPage('select')} className="p-1.5 -ml-1.5 rounded-full hover:bg-on-surface/5 text-on-surface/40"><ChevronLeft size={22} /></button>
-                  <h2 className="font-serif font-bold text-lg flex-1">Search Restaurant</h2>
+                  <h2 className="font-bold text-lg flex-1">Search Restaurant</h2>
                 </div>
 
                 <form onSubmit={(e) => { e.preventDefault(); handleSearchPlaces(); }} className="px-5 pt-3 pb-2 flex-shrink-0">
@@ -3409,7 +3409,7 @@ const AddToNightSheet: React.FC<{
                 className="flex flex-col h-full">
                 <div className="px-5 pt-4 pb-3 flex items-center gap-3 flex-shrink-0 border-b border-on-surface/6">
                   <button onClick={() => setPage('select')} className="p-1.5 -ml-1.5 rounded-full hover:bg-on-surface/5 text-on-surface/40"><ChevronLeft size={22} /></button>
-                  <h2 className="font-serif font-bold text-lg flex-1">Hotel Restaurant</h2>
+                  <h2 className="font-bold text-lg flex-1">Hotel Restaurant</h2>
                 </div>
 
                 {/* Meal type selector for hotel */}
@@ -3673,7 +3673,7 @@ const TripsTab: React.FC<{
 
           {/* Trip name + meta */}
           <div className="px-1">
-            <h1 className="text-2xl font-serif font-bold text-on-surface leading-tight">{selectedTrip.name}</h1>
+            <h1 className="text-2xl font-bold text-on-surface leading-tight">{selectedTrip.name}</h1>
             <p className="text-sm text-on-surface/45 mt-1.5 font-medium">
               {selectedTrip.destination} · {formatDateRange(selectedTrip.startDate, selectedTrip.endDate)}
             </p>
@@ -3798,7 +3798,7 @@ const TripsTab: React.FC<{
                 <div key={nightIdx}>
                   {/* Flat bold header: "Night N — Date" + Add */}
                   <div className="flex items-baseline gap-2 mb-3 px-1">
-                    <h3 className="font-serif font-bold text-lg text-on-surface leading-none">Night {nightIdx + 1}</h3>
+                    <h3 className="font-bold text-lg text-on-surface leading-none">Night {nightIdx + 1}</h3>
                     <span className="text-on-surface/25 text-sm">—</span>
                     <span className="text-sm text-on-surface/50 font-medium truncate">{nightDateStr}</span>
                     <div className="flex-1" />
@@ -3920,13 +3920,13 @@ const TripsTab: React.FC<{
         <button onClick={onBack} className="p-1.5 rounded-full hover:bg-on-surface/5">
           <ArrowLeft size={20} />
         </button>
-        <h2 className="font-serif font-bold text-xl">Trips</h2>
+        <h2 className="font-bold text-xl">Trips</h2>
       </div>
 
       {sortedTrips.length === 0 ? (
         <div className="text-center py-16">
           <Plane size={48} className="text-on-surface/10 mx-auto mb-4" />
-          <h3 className="font-serif font-bold text-lg text-on-surface/60 mb-1">Plan Your First Trip</h3>
+          <h3 className="font-bold text-lg text-on-surface/60 mb-1">Plan Your First Trip</h3>
           <p className="text-sm text-on-surface/30 mb-6 max-w-[240px] mx-auto">Organize restaurants by night, track hotels, and share your itinerary</p>
           <button onClick={() => setCreateOpen(true)}
             className="px-6 py-3 bg-primary text-white rounded-2xl text-sm font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity">
@@ -3950,7 +3950,7 @@ const TripsTab: React.FC<{
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h3 className="font-serif font-bold text-lg text-white leading-tight">{trip.name}</h3>
+                    <h3 className="font-bold text-lg text-white leading-tight">{trip.name}</h3>
                     <p className="text-white/70 text-xs">{trip.destination}</p>
                   </div>
                   <div className="absolute top-3 right-3">
@@ -4154,7 +4154,7 @@ const CreateTripSheet: React.FC<{
         >
           {/* Header */}
           <div className="px-5 pt-5 pb-3 flex items-center justify-between flex-shrink-0">
-            <h2 className="font-serif font-bold text-lg">{trip ? 'Edit Trip' : 'New Trip'}</h2>
+            <h2 className="font-bold text-lg">{trip ? 'Edit Trip' : 'New Trip'}</h2>
             <button onClick={onClose} className="p-2 rounded-full hover:bg-on-surface/5">
               <X size={20} className="text-on-surface/50" />
             </button>
@@ -4239,7 +4239,7 @@ const CreateTripSheet: React.FC<{
                     className="relative z-40 bg-white rounded-2xl shadow-2xl border border-on-surface/8 p-4 mb-4"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-serif font-bold text-sm">{calendarOpen === 'start' ? 'Start Date' : 'End Date'}</h3>
+                      <h3 className="font-bold text-sm">{calendarOpen === 'start' ? 'Start Date' : 'End Date'}</h3>
                       <button onClick={() => setCalendarOpen(null)} className="p-1 rounded-full hover:bg-on-surface/5">
                         <X size={16} className="text-on-surface/40" />
                       </button>
@@ -4636,7 +4636,7 @@ const HomeCookingTab: React.FC<{
         <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-on-surface/40 font-medium mb-1">
           {new Date(selectedMeal.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
         </p>
-        <h1 className="font-serif font-bold text-[26px] leading-[1.15] sm:text-4xl text-on-surface mb-3">
+        <h1 className="font-bold text-[26px] leading-[1.15] sm:text-4xl text-on-surface mb-3">
           {selectedMeal.name}
         </h1>
 
@@ -4805,7 +4805,7 @@ const HomeCookingTab: React.FC<{
       <section id="ingredients">
         <div className="bg-white rounded-2xl border border-on-surface/8 p-5 sm:p-6">
           <div className="flex items-baseline justify-between gap-3 mb-4">
-            <h2 className="font-serif font-bold text-2xl text-on-surface">Ingredients</h2>
+            <h2 className="font-bold text-2xl text-on-surface">Ingredients</h2>
             <span className="text-[11px] text-on-surface/40 font-medium">
               {selectedMeal.ingredients!.length} item{selectedMeal.ingredients!.length !== 1 ? 's' : ''}
             </span>
@@ -4886,7 +4886,7 @@ const HomeCookingTab: React.FC<{
     const directionsBlock = hasSteps ? (
       <section id="directions">
         <div className="bg-white rounded-2xl border border-on-surface/8 p-5 sm:p-6">
-          <h2 className="font-serif font-bold text-2xl text-on-surface mb-5">Directions</h2>
+          <h2 className="font-bold text-2xl text-on-surface mb-5">Directions</h2>
           <ol className="space-y-5">
             {selectedMeal.steps!.map((step, i) => {
               const timerMinutes = extractStepMinutes(step);
@@ -4913,7 +4913,7 @@ const HomeCookingTab: React.FC<{
 
     const notesBlock = selectedMeal.description ? (
       <section id="notes">
-        <h2 className="font-serif font-bold text-xl text-on-surface mb-3">Notes</h2>
+        <h2 className="font-bold text-xl text-on-surface mb-3">Notes</h2>
         <blockquote className="relative bg-amber-50/60 border-l-4 border-amber-400 rounded-r-xl px-5 py-4 sm:px-6 sm:py-5">
           <p className="italic font-serif text-on-surface/75 leading-[1.7] text-[15px] sm:text-[16px] whitespace-pre-wrap">
             {selectedMeal.description}
@@ -4924,7 +4924,7 @@ const HomeCookingTab: React.FC<{
 
     const dishesBlock = selectedMeal.dishes.length > 0 ? (
       <section>
-        <h2 className="font-serif font-bold text-xl text-on-surface mb-3">
+        <h2 className="font-bold text-xl text-on-surface mb-3">
           Dishes <span className="text-sm text-on-surface/35 font-medium">({selectedMeal.dishes.length})</span>
         </h2>
         <div className="grid sm:grid-cols-2 gap-4">
@@ -4954,7 +4954,7 @@ const HomeCookingTab: React.FC<{
     const photosVisible = selectedMeal.photos.length > photosSliceStart;
     const photosBlock = photosVisible ? (
       <section id="photos">
-        <h2 className="font-serif font-bold text-xl text-on-surface mb-3">Photos</h2>
+        <h2 className="font-bold text-xl text-on-surface mb-3">Photos</h2>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
           {selectedMeal.photos.slice(photosSliceStart).map((photo, i) => {
             const lightboxIdx = (selectedMeal.coverPhoto ? 1 : 0) + photosSliceStart + i;
@@ -5395,7 +5395,7 @@ const HomeCookingTab: React.FC<{
           )}
         </div>
       ) : effectiveRecipeViewMode === 'grid' ? (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-6 items-start">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
           {filteredMeals.map((meal) => (
             <RecipeGridCard
               key={meal.id}
@@ -5457,7 +5457,7 @@ const RecipeRow: React.FC<{
         className="w-full text-left py-4 active:scale-[0.99] transition-transform"
       >
         <div className="flex items-start justify-between gap-3">
-          <h3 className="font-serif font-bold text-[15px] leading-snug line-clamp-2 flex-1">{meal.name}</h3>
+          <h3 className="font-bold text-[15px] leading-snug line-clamp-2 flex-1">{meal.name}</h3>
           <div className="flex-shrink-0 mr-7">
             {meal.score > 0 ? (
               <ScoreBadge rating={meal.score} size="sm" />
@@ -5541,7 +5541,7 @@ const RecipeGridCard: React.FC<{
 
         {/* Body */}
         <div className="px-0.5">
-          <h3 className="font-serif font-bold text-[15px] leading-snug line-clamp-2 text-on-surface">
+          <h3 className="font-bold text-[15px] leading-snug line-clamp-2 text-on-surface">
             {meal.name}
           </h3>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-on-surface/55 font-medium uppercase tracking-wider">
@@ -5646,7 +5646,7 @@ const RecipeFilterSheet: React.FC<{
                   <SlidersHorizontal size={15} />
                 </div>
                 <div>
-                  <h3 className={cn('font-serif font-bold leading-tight', phoneMode ? 'text-lg' : 'text-[20px]')}>Filter recipes</h3>
+                  <h3 className={cn('font-bold leading-tight', phoneMode ? 'text-lg' : 'text-[20px]')}>Filter recipes</h3>
                   {activeCount > 0 && (
                     <p className="text-[11px] text-on-surface/45 font-medium">
                       {activeCount} active filter{activeCount === 1 ? '' : 's'}
@@ -5786,7 +5786,7 @@ const FilterListSheet: React.FC<{
           >
             {phoneMode && <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-on-surface/15" /></div>}
             <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-on-surface/[0.06] flex-shrink-0">
-              <h3 className="font-serif font-bold text-lg">{title}</h3>
+              <h3 className="font-bold text-lg">{title}</h3>
               <button onClick={onClose} className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center">
                 <X size={16} className="text-on-surface/60" />
               </button>
@@ -5851,7 +5851,7 @@ const PricePickerSheet: React.FC<{
             {phoneMode && <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-on-surface/15" /></div>}
             <div className="px-5 pt-3 pb-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-serif font-bold text-base">Price Range</h3>
+                <h3 className="font-bold text-base">Price Range</h3>
                 <button onClick={onClose} className="w-7 h-7 rounded-full bg-on-surface/5 flex items-center justify-center">
                   <X size={14} className="text-on-surface/60" />
                 </button>
@@ -5898,7 +5898,7 @@ const SortPickerSheet: React.FC<{
             {phoneMode && <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-on-surface/15" /></div>}
             <div className="px-5 pt-3 pb-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-serif font-bold text-base">Sort By</h3>
+                <h3 className="font-bold text-base">Sort By</h3>
                 <button onClick={onClose} className="w-7 h-7 rounded-full bg-on-surface/5 flex items-center justify-center">
                   <X size={14} className="text-on-surface/60" />
                 </button>
@@ -6782,7 +6782,10 @@ export const Pantry: React.FC = () => {
   };
 
   return (
-    <div className="pb-32">
+    /* Pantry caps to the canonical max-w-6xl column on wide monitors
+       so its sub-views don't sprawl on 1920px screens. Internal px-3
+       is preserved on mobile; px-8 takes over on desktop. */
+    <div className="pb-32 max-w-6xl mx-auto w-full">
       {/* Combined tabs + list selector — desktop only.
           The tab pill IS the list selector: each tab shows the active
           list within its section (emoji + name + count + chevron).
@@ -7301,7 +7304,7 @@ export const Pantry: React.FC = () => {
               <div className="space-y-5">
                 {/* Rated section */}
                 {filteredRatings.length > 0 ? (
-                  <div className={(sortBy !== 'custom' && effectiveViewMode === 'grid') ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-6 items-start" : "divide-y divide-on-surface/[0.06]"}>
+                  <div className={(sortBy !== 'custom' && effectiveViewMode === 'grid') ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start" : "divide-y divide-on-surface/[0.06]"}>
                     {filteredRatings.map((r, idx) => {
                       const inLists = getListsForRestaurant(r.restaurantId);
                       const isCustom = sortBy === 'custom';
@@ -7502,7 +7505,7 @@ export const Pantry: React.FC = () => {
             >
               {phoneMode && <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-on-surface/15" /></div>}
               <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-on-surface/6 flex-shrink-0">
-                <h3 className="font-serif font-bold text-lg">Select City</h3>
+                <h3 className="font-bold text-lg">Select City</h3>
                 <button onClick={() => setCityDropdownOpen(false)} className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center">
                   <X size={16} className="text-on-surface/60" />
                 </button>
@@ -7552,7 +7555,7 @@ export const Pantry: React.FC = () => {
             >
               {phoneMode && <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-on-surface/15" /></div>}
               <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-on-surface/6 flex-shrink-0">
-                <h3 className="font-serif font-bold text-lg">Select Cuisine</h3>
+                <h3 className="font-bold text-lg">Select Cuisine</h3>
                 <button onClick={() => setCuisineDropdownOpen(false)} className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center">
                   <X size={16} className="text-on-surface/60" />
                 </button>
@@ -7600,7 +7603,7 @@ export const Pantry: React.FC = () => {
               {phoneMode && <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-on-surface/15" /></div>}
               <div className="px-5 pt-3 pb-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-serif font-bold text-base">Sort By</h3>
+                  <h3 className="font-bold text-base">Sort By</h3>
                   <button onClick={() => setSortDropdownOpen(false)} className="w-7 h-7 rounded-full bg-on-surface/5 flex items-center justify-center">
                     <X size={14} className="text-on-surface/60" />
                   </button>
@@ -7635,7 +7638,7 @@ export const Pantry: React.FC = () => {
               {phoneMode && <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-on-surface/15" /></div>}
               <div className="px-5 pt-3 pb-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-serif font-bold text-base">Price Range</h3>
+                  <h3 className="font-bold text-base">Price Range</h3>
                   <button onClick={() => setPriceDropdownOpen(false)} className="w-7 h-7 rounded-full bg-on-surface/5 flex items-center justify-center">
                     <X size={14} className="text-on-surface/60" />
                   </button>

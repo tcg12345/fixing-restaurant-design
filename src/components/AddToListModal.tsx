@@ -57,7 +57,7 @@ export const AddToListModal: React.FC = () => {
             {/* Header */}
             <div className="sticky top-0 bg-surface/95 backdrop-blur-sm px-5 pt-5 pb-3 border-b border-on-surface/8 z-10">
               <div className="flex items-center justify-between">
-                <h2 className="font-serif font-bold text-lg">Add to List</h2>
+                <h2 className="font-bold text-lg">Add to List</h2>
                 <button onClick={handleClose} className="p-2 -mr-2 text-on-surface/40 hover:text-on-surface transition-colors">
                   <X size={20} />
                 </button>

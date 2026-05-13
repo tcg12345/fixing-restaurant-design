@@ -37,6 +37,15 @@
   --color-olive: #5c6144;
   --color-clay: #9f3012;
   --color-persimmon: #e85a2c;
+
+  /* Shadow ramp. Three steps cover every elevated surface in the app —
+     resting cards, hovered cards, and modals. Inline shadow-[…] magic
+     numbers should resolve to one of these. The values use a tinted
+     ink base (the on-surface ink color at low alpha) rather than pure
+     black so shadows stay warm against the cream background. */
+  --shadow-card: 0 1px 2px rgba(30, 27, 26, 0.04), 0 6px 16px -8px rgba(30, 27, 26, 0.08);
+  --shadow-card-hover: 0 2px 4px rgba(30, 27, 26, 0.06), 0 18px 36px -12px rgba(30, 27, 26, 0.16);
+  --shadow-modal: 0 12px 32px -8px rgba(30, 27, 26, 0.18), 0 32px 80px -24px rgba(30, 27, 26, 0.24);
 }
 
 /* ── Dark mode overrides ──────────────────────────────────────────────
@@ -58,6 +67,12 @@
   --color-ink-2: #c2c2c2;
   --color-ink-3: #8a8a8a;
   --color-ink-4: #5d5d5d;
+
+  /* Re-tune shadows for the dark page. Pure black at higher alpha so the
+     elevation still reads against the near-black surface. */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 16px -8px rgba(0, 0, 0, 0.55);
+  --shadow-card-hover: 0 2px 4px rgba(0, 0, 0, 0.55), 0 18px 36px -12px rgba(0, 0, 0, 0.7);
+  --shadow-modal: 0 12px 32px -8px rgba(0, 0, 0, 0.65), 0 32px 80px -24px rgba(0, 0, 0, 0.75);
 }
 
 .dark {
@@ -70,7 +85,8 @@
 .dark .bg-white\/90,
 .dark .bg-white\/85,
 .dark .bg-white\/80,
-.dark .bg-white\/70 {
+.dark .bg-white\/70,
+.dark .glass {
   background-color: var(--color-paper) !important;
 }
 /* Glass / pill backgrounds defined as `bg-on-surface/X` already adapt
@@ -99,15 +115,15 @@
      place and every section stays consistent. */
   .section-eyebrow {
     font-family: "JetBrains Mono", ui-monospace, monospace;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--color-ink-2);
+    color: var(--color-ink-3);
   }
   .section-title {
     font-family: "Fraunces", "Noto Serif", serif;
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 500;
     letter-spacing: -0.4px;
     line-height: 1.15;
@@ -156,11 +172,21 @@
 }
 
 .card-interactive {
-  @apply bg-white/80 backdrop-blur-sm rounded-xl border border-on-surface/8 shadow-sm;
+  background-color: color-mix(in srgb, var(--color-paper) 80%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+  box-shadow: var(--shadow-card);
 }
 
+/* Frosted-glass surface that adapts to dark mode automatically by routing
+   through `--color-paper` (which already flips). The brute-force dark
+   `bg-white` override block below no longer needs to special-case it. */
 .glass {
-  @apply bg-white/80 backdrop-blur-xl;
+  background-color: color-mix(in srgb, var(--color-paper) 80%, transparent);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
 }
 
 .stagger-grid {

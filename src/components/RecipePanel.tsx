@@ -228,7 +228,7 @@ const ReviewsSection: React.FC<{
 
   return (
     <section>
-      <h3 className="font-serif font-bold text-on-surface text-[18px] mb-3">Reviews</h3>
+      <h3 className="font-bold text-on-surface text-[18px] mb-3">Reviews</h3>
 
       {/* Subtle summary pill — average score, filled-stars rendering, count
           text. Reads as a quiet header for the list rather than a
@@ -402,7 +402,7 @@ const SaveToListModal: React.FC<{
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-on-surface/[0.07] flex-shrink-0">
           <div>
-            <h2 className="font-serif font-bold text-on-surface text-[18px] leading-tight">Save to a list</h2>
+            <h2 className="font-bold text-on-surface text-[18px] leading-tight">Save to a list</h2>
             <p className="text-[11px] text-on-surface/55 mt-0.5">Pick where this recipe should live</p>
           </div>
           <button
@@ -725,7 +725,7 @@ const RecipePanelBody: React.FC<{
       <div className="flex-shrink-0 border-b border-on-surface/[0.07] bg-surface/95 backdrop-blur sticky top-0 z-10 px-5 pt-5 pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="font-serif font-bold text-on-surface text-[18px] leading-[1.15] tracking-tight line-clamp-2">
+            <h2 className="font-bold text-on-surface text-[18px] leading-[1.15] tracking-tight line-clamp-2">
               {recipe.title}
             </h2>
             <p className="text-[11px] text-on-surface/55 mt-1 truncate">
@@ -850,7 +850,7 @@ const RecipePanelBody: React.FC<{
             {ingredients.length > 0 && (
               <section>
                 <div className="flex items-baseline justify-between mb-3">
-                  <h3 className="font-serif font-bold text-on-surface text-[18px]">Ingredients</h3>
+                  <h3 className="font-bold text-on-surface text-[18px]">Ingredients</h3>
                   <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface/45 tabular-nums">
                     {ingredients.length} {ingredients.length === 1 ? 'item' : 'items'}
                   </span>
@@ -875,7 +875,7 @@ const RecipePanelBody: React.FC<{
             {steps.length > 0 && (
               <section>
                 <div className="flex items-baseline justify-between mb-3">
-                  <h3 className="font-serif font-bold text-on-surface text-[18px]">Method</h3>
+                  <h3 className="font-bold text-on-surface text-[18px]">Method</h3>
                   <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface/45 tabular-nums">
                     {steps.length} {steps.length === 1 ? 'step' : 'steps'}
                   </span>

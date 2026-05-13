@@ -308,7 +308,7 @@ export const AddRestaurantModal: React.FC = () => {
                   className="flex flex-col flex-1 min-h-0">
                   <div className="px-5 pt-4 sm:pt-5 pb-2 flex items-center justify-between flex-shrink-0">
                     <div className="min-w-0">
-                      <h2 className="font-serif font-bold text-lg truncate">
+                      <h2 className="font-bold text-lg truncate">
                         {existing ? (isNewVisit ? 'New Visit' : 'Update Rating') : 'Rate Restaurant'}
                         {existing && visitCount > 0 && (
                           <span className="text-xs font-normal text-on-surface/30 ml-1.5">Visit #{visitCount + (isNewVisit ? 2 : 1)}</span>
@@ -698,7 +698,7 @@ export const AddRestaurantModal: React.FC = () => {
           >
             {phoneMode && <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-on-surface/15" /></div>}
             <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-on-surface/6 flex-shrink-0">
-              <h3 className="font-serif font-bold text-lg">{newListMode === 'browse' ? 'New List' : 'Create Custom List'}</h3>
+              <h3 className="font-bold text-lg">{newListMode === 'browse' ? 'New List' : 'Create Custom List'}</h3>
               <button onClick={() => { setNewListSheetOpen(false); setNewListMode('browse'); }} className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center">
                 <X size={16} className="text-on-surface/60" />
               </button>
@@ -803,7 +803,7 @@ const SubPage: React.FC<{
       <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-full hover:bg-on-surface/5 text-on-surface/40 hover:text-on-surface transition-colors">
         <ChevronLeft size={22} />
       </button>
-      <h2 className="font-serif font-bold text-lg flex-1">{title}</h2>
+      <h2 className="font-bold text-lg flex-1">{title}</h2>
       {rightAction}
     </div>
     {children}

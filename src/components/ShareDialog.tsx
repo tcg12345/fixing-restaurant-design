@@ -340,7 +340,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({ open, onClose, payload
           >
             {/* Header */}
             <div className="px-5 pt-4 pb-3 flex items-center justify-between gap-3 border-b border-on-surface/[0.06] flex-shrink-0">
-              <h2 className="font-serif font-bold text-lg leading-tight truncate">{computedTitle}</h2>
+              <h2 className="font-bold text-lg leading-tight truncate">{computedTitle}</h2>
               <button
                 type="button"
                 onClick={onClose}

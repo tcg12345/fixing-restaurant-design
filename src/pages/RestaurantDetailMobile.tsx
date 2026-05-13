@@ -261,10 +261,11 @@ export const RestaurantDetailMobile: React.FC = () => {
           className="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none"
           style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)' }}
         />
-        {/* Thin fade into page bg */}
+        {/* Thin fade into page bg — uses --color-surface so dark mode
+            flips the gradient automatically. */}
         <div
           className="absolute inset-x-0 bottom-0 h-8 pointer-events-none"
-          style={{ background: 'linear-gradient(to top, #fff8f6, transparent)' }}
+          style={{ background: 'linear-gradient(to top, var(--color-surface), transparent)' }}
         />
 
         {/* Carousel arrows */}
@@ -326,15 +327,15 @@ export const RestaurantDetailMobile: React.FC = () => {
               <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
                   <h1
-                    className="text-on-surface leading-[1.05]"
-                    style={{
-                      fontFamily: '"Fraunces", "Noto Serif", serif',
-                      fontSize: '32px',
-                      fontWeight: 500,
-                      letterSpacing: '-0.6px',
-                      fontVariationSettings: '"opsz" 144',
-                    }}
-                  >
+ className="text-on-surface leading-[1.05]"
+ style={{
+ fontFamily: '"Fraunces", "Noto Serif", serif',
+ fontSize: '32px',
+ fontWeight: 500,
+ letterSpacing: '-0.6px',
+ fontVariationSettings: '"opsz" 144',
+ }}
+ >
                     {place.name}
                   </h1>
                   {(() => {
@@ -824,7 +825,7 @@ export const RestaurantDetailMobile: React.FC = () => {
                 <p className="section-eyebrow mb-1">
                   Hotel Dining
                 </p>
-                <h2 className="text-[22px] font-serif font-bold text-on-surface leading-tight">
+                <h2 className="text-[22px] font-bold text-on-surface leading-tight">
                   Eat and drink on site
                 </h2>
               </div>
@@ -865,7 +866,7 @@ export const RestaurantDetailMobile: React.FC = () => {
                           className="w-full flex items-start justify-between gap-3 px-4 py-3.5 text-left active:bg-on-surface/[0.015] transition-colors"
                         >
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-serif font-bold text-[15px] truncate">{d.restaurant_name}</h4>
+                            <h4 className="font-bold text-[15px] truncate">{d.restaurant_name}</h4>
                             <p className={cn(
                               'mt-0.5 text-[10px] font-bold uppercase tracking-[0.18em]',
                               d.dining_type === 'restaurant' ? 'text-primary/70' :
@@ -1705,7 +1706,7 @@ export const RestaurantDetailMobile: React.FC = () => {
               <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-on-surface/15" /></div>
               <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-on-surface/6 flex-shrink-0">
                 <div>
-                  <h3 className="font-serif font-bold text-lg">Friends' Ratings</h3>
+                  <h3 className="font-bold text-lg">Friends' Ratings</h3>
                   <p className="text-xs text-on-surface/40">{place.name}</p>
                 </div>
                 <button onClick={() => setShowFriendsDetail(false)} className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center">

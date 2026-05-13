@@ -154,15 +154,15 @@ export const RestaurantCircleReviews: React.FC = () => {
             </p>
             {name && (
               <h1
-                className="text-ink truncate"
-                style={{
-                  fontFamily: '"Fraunces", "Noto Serif", serif',
-                  fontSize: '20px',
-                  fontWeight: 500,
-                  letterSpacing: '-0.4px',
-                  lineHeight: 1.15,
-                }}
-              >
+ className="text-ink truncate"
+ style={{
+ fontFamily: '"Fraunces", "Noto Serif", serif',
+ fontSize: '20px',
+ fontWeight: 500,
+ letterSpacing: '-0.4px',
+ lineHeight: 1.15,
+ }}
+ >
                 {name}
               </h1>
             )}

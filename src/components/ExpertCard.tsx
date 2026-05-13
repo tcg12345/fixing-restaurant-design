@@ -22,7 +22,7 @@ export const ExpertCard: React.FC<ExpertCardProps> = ({
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className="relative aspect-square rounded-3xl overflow-hidden group cursor-pointer"
+      className="relative aspect-square rounded-2xl overflow-hidden group cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-200"
     >
       <img
         src={image}
@@ -39,7 +39,7 @@ export const ExpertCard: React.FC<ExpertCardProps> = ({
             <Crown size={11} className="text-amber-400" />
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">{role}</p>
           </div>
-          <h3 className="font-serif text-xl font-bold leading-tight mb-1 truncate">{name}</h3>
+          <h3 className="text-xl font-bold leading-tight mb-1 truncate">{name}</h3>
           <p className="text-[12px] font-medium text-white/80 truncate">{stats}</p>
         </div>
         {onFollow && (

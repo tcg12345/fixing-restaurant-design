@@ -264,7 +264,7 @@ export const MealRecipePage: React.FC = () => {
       <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-on-surface/40 font-medium mb-2">
         {new Date(meal.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
       </p>
-      <h1 className="font-serif font-bold text-[28px] leading-[1.1] sm:text-5xl text-on-surface mb-4">
+      <h1 className="font-bold text-[28px] leading-[1.1] sm:text-5xl text-on-surface mb-4">
         {meal.name}
       </h1>
 
@@ -332,7 +332,7 @@ export const MealRecipePage: React.FC = () => {
   const ingredientsBlock = hasIngredients ? (
     <section id="ingredients" className="scroll-mt-20">
       <div className="flex items-baseline justify-between gap-3 mb-4">
-        <h2 className="font-serif font-bold text-2xl text-on-surface">Ingredients</h2>
+        <h2 className="font-bold text-2xl text-on-surface">Ingredients</h2>
         <span className="text-[11px] text-on-surface/40 font-medium">
           {meal.ingredients!.length} item{meal.ingredients!.length !== 1 ? 's' : ''}
         </span>
@@ -351,14 +351,14 @@ export const MealRecipePage: React.FC = () => {
 
   const directionsBlock = hasSteps ? (
     <section id="directions" className="scroll-mt-20">
-      <h2 className="font-serif font-bold text-2xl text-on-surface mb-4">Directions</h2>
+      <h2 className="font-bold text-2xl text-on-surface mb-4">Directions</h2>
       <RecipeDirectionsList steps={meal.steps!} />
     </section>
   ) : null;
 
   const notesBlock = meal.description ? (
     <section id="notes">
-      <h2 className="font-serif font-bold text-xl text-on-surface mb-3">Notes</h2>
+      <h2 className="font-bold text-xl text-on-surface mb-3">Notes</h2>
       <blockquote className="relative bg-amber-50/60 border-l-4 border-amber-400 rounded-r-xl px-5 py-4 sm:px-6 sm:py-5">
         <p className="italic font-serif text-on-surface/75 leading-[1.7] text-[15px] sm:text-[16px] whitespace-pre-wrap">
           {meal.description}
@@ -369,7 +369,7 @@ export const MealRecipePage: React.FC = () => {
 
   const photosBlock = allPhotos.length > 0 ? (
     <section id="photos">
-      <h2 className="font-serif font-bold text-xl text-on-surface mb-3">Photos</h2>
+      <h2 className="font-bold text-xl text-on-surface mb-3">Photos</h2>
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
         {allPhotos.map((photo, i) => (
           <button
@@ -386,7 +386,7 @@ export const MealRecipePage: React.FC = () => {
 
   const rateBlock = (
     <section id="rate">
-      <h2 className="font-serif font-bold text-xl text-on-surface mb-3">Rate this recipe</h2>
+      <h2 className="font-bold text-xl text-on-surface mb-3">Rate this recipe</h2>
       {!currentUserId ? (
         <p className="text-sm text-on-surface/50 italic">Sign in to leave a rating.</p>
       ) : isAuthor ? (
@@ -467,7 +467,7 @@ export const MealRecipePage: React.FC = () => {
 
   const reviewsBlock = (
     <section id="reviews" className="scroll-mt-20">
-      <h2 className="font-serif font-bold text-xl text-on-surface mb-3">
+      <h2 className="font-bold text-xl text-on-surface mb-3">
         {summary.count > 0 ? `Reviews (${summary.count})` : 'Reviews'}
       </h2>
       {loadingReviews ? (

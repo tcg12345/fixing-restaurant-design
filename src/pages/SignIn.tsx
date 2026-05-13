@@ -49,7 +49,7 @@ export const SignIn: React.FC = () => {
           <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-white font-serif italic text-4xl shadow-lg shadow-primary/25 mb-6">
             G
           </div>
-          <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight text-on-surface mb-3">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-on-surface mb-3">
             Gourmet Canvas
           </h1>
           <p className="text-lg text-on-surface/50 max-w-md font-light">
@@ -68,7 +68,7 @@ export const SignIn: React.FC = () => {
             >
               <div className="flex items-start gap-3 mb-1.5">
                 <f.icon size={20} className="text-primary flex-shrink-0 mt-[9px]" strokeWidth={2.25} />
-                <h3 className="font-serif font-bold text-[26px] text-on-surface leading-tight tracking-tight">
+                <h3 className="font-bold text-[26px] text-on-surface leading-tight tracking-tight">
                   {f.label}
                 </h3>
               </div>

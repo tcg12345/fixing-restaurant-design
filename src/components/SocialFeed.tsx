@@ -439,7 +439,7 @@ export const SocialFeed: React.FC<SocialFeedProps> = ({ centerLat = null, center
                       className="block w-full text-left mt-4 group focus-visible:outline-none"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="font-serif font-bold text-[19px] leading-[1.15] flex-1 min-w-0 line-clamp-2 group-hover:text-primary transition-colors">{m.name}</h3>
+                        <h3 className="font-bold text-[19px] leading-[1.15] flex-1 min-w-0 line-clamp-2 group-hover:text-primary transition-colors">{m.name}</h3>
                         {summary && summary.count > 0 && (
                           <div className="flex-shrink-0 flex flex-col items-end gap-0.5 pt-0.5">
                             <div className="flex gap-0.5">
@@ -519,7 +519,7 @@ export const SocialFeed: React.FC<SocialFeedProps> = ({ centerLat = null, center
                     className="block w-full text-left mt-4 group focus-visible:outline-none"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-serif font-bold text-[19px] leading-[1.15] flex-1 min-w-0 line-clamp-2 group-hover:text-primary transition-colors">{m.name}</h3>
+                      <h3 className="font-bold text-[19px] leading-[1.15] flex-1 min-w-0 line-clamp-2 group-hover:text-primary transition-colors">{m.name}</h3>
                       {summary && summary.count > 0 && (
                         <div className="flex-shrink-0 flex flex-col items-end gap-0.5 pt-0.5">
                           <div className="flex gap-0.5">
@@ -612,7 +612,7 @@ export const SocialFeed: React.FC<SocialFeedProps> = ({ centerLat = null, center
                 className="block w-full text-left mt-4 group focus-visible:outline-none"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <h3 className="font-serif font-bold text-[19px] leading-[1.15] flex-1 min-w-0 line-clamp-2 group-hover:text-primary transition-colors">
+                  <h3 className="font-bold text-[19px] leading-[1.15] flex-1 min-w-0 line-clamp-2 group-hover:text-primary transition-colors">
                     {r.restaurant_name}
                   </h3>
                   <ScoreBadge rating={Number(r.score)} size="md" />

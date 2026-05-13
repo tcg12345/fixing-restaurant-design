@@ -340,7 +340,7 @@ export const SearchMain: React.FC = () => {
                         )}
                       >
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
-                          <h3 className="font-serif font-bold text-[15px] leading-snug line-clamp-2">{place.name}</h3>
+                          <h3 className="font-bold text-[15px] leading-snug line-clamp-2">{place.name}</h3>
                           <p className="mt-0.5 text-[11px] text-on-surface/50 font-medium uppercase tracking-wider truncate">
                             {location || 'Restaurant'}
                             {price && <><span className="text-on-surface/25 mx-1.5">·</span>{price}</>}
